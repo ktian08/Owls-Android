@@ -2,11 +2,11 @@ package com.mygdx.game;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
@@ -18,12 +18,12 @@ import com.badlogic.gdx.physics.box2d.World;
 
 public class OwlsGame extends ApplicationAdapter {
 	private SpriteBatch batch;
+	private Sprite block;
 	private World world;
 	private Body body;
 	private OrthographicCamera camera;
 	private Box2DDebugRenderer debugRenderer;
 	private Matrix4 debugMatrix;
-	private ShapeRenderer shapeRenderer;
 
 	private float width;
 	private float height;
@@ -53,8 +53,12 @@ public class OwlsGame extends ApplicationAdapter {
 		body.createFixture(fixtureDef);
 
 		ground.dispose(); //dispose of box shape, body already created
-		//create shape renderer
-		shapeRenderer = new ShapeRenderer();
+		//create the building block for all platforms
+		Texture img = new Texture("block.png");
+		block = new Sprite(img); //50x50 pixels
+		img.dispose();
+		block.setSize(width, heightGround); //block is now width by heightGround
+		block.setPosition(-width/2, -height/2); //set position to bottom left
 		//set debug renderer
 		debugRenderer = new Box2DDebugRenderer();
 		//set camera
@@ -74,16 +78,10 @@ public class OwlsGame extends ApplicationAdapter {
 		debugMatrix = batch.getProjectionMatrix().cpy();
 		//execute
 		batch.begin();
+		block.draw(batch);
 		batch.end();
 		//debug physics boxes/bodies
 		debugRenderer.render(world, debugMatrix);
-		//draw ground platform rectangle
-		shapeRenderer.setProjectionMatrix(batch.getProjectionMatrix());
-
-		shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-		shapeRenderer.setColor(Color.BLACK);
-		shapeRenderer.rect(-width/2, -height/2, width, heightGround);
-		shapeRenderer.end();
 	}
 	
 	@Override
@@ -91,7 +89,6 @@ public class OwlsGame extends ApplicationAdapter {
 		//prevent memory leaks!!!
 		batch.dispose();
 		world.dispose();
-		shapeRenderer.dispose();
 		debugRenderer.dispose();
 	}
 
