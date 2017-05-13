@@ -4,6 +4,7 @@ import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -21,6 +22,7 @@ import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Touchpad;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
+import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
 public class OwlsGame extends ApplicationAdapter {
 	private SpriteBatch batch;
@@ -33,7 +35,6 @@ public class OwlsGame extends ApplicationAdapter {
 	private Matrix4 debugMatrix;
 	private Touchpad joystick;
 	private float joystickSpeed;
-
 	private static final float WIDTH = 64;
 	private static final float HEIGHT = 36;
 	private float heightGround;
@@ -47,26 +48,43 @@ public class OwlsGame extends ApplicationAdapter {
 		//create world with -10 gravity in vert direction
 		world = new World(new Vector2(0.0f, -10.0f), true);
 
+		//set camera
+		camera = new OrthographicCamera(WIDTH, HEIGHT);
+
+		//create the joystick
+		Pixmap background = new Pixmap(Gdx.files.internal("touchBackground.png"));
+		Pixmap background2 = new Pixmap(Gdx.graphics.getHeight()/3, Gdx.graphics.getHeight()/3, background.getFormat()); //resizing the texture!
+		background2.drawPixmap(background, 0, 0, background.getWidth(), background.getHeight()
+				, 0, 0, background2.getWidth(), background2.getHeight());
+		Texture jBackground = new Texture(background2);
+		background.dispose();
+		background2.dispose();
+		Pixmap knob = new Pixmap(Gdx.files.internal("touchKnob.png"));
+		Pixmap knob2 = new Pixmap(Gdx.graphics.getHeight()/8, Gdx.graphics.getHeight()/8, knob.getFormat()); //resizing the texture!
+		knob2.drawPixmap(knob, 0, 0, knob.getWidth(), knob.getHeight()
+				, 0, 0, knob2.getWidth(), knob2.getHeight());
+		Texture jKnob = new Texture(knob2);
+		knob.dispose();
+		knob2.dispose();
+
+		joystick = returnJoystick(0, jBackground, jKnob);
+		joystick.setBounds(Gdx.graphics.getWidth()/20, Gdx.graphics.getHeight()/10 //origin is bottom left for stage
+				, jBackground.getWidth(), jBackground.getWidth()); //joystick is set to screen viewport, so treat as if it's the whole screen not the world
+
+		//create state and add the touchpad as actor
+		stage = new Stage(new ScreenViewport());
+		stage.addActor(joystick);
+
+		joystickSpeed = HEIGHT/6;
+
+		Gdx.input.setInputProcessor(stage);
+
 		//create player sprite
 		Texture i = new Texture("whitecircle.png");
 		player = new Sprite(i); //400x400 pixels
 
 		player.setSize(HEIGHT/10, HEIGHT/10);
 		player.setPosition(0, 10);
-
-		//create the joystick
-		Texture jBackground = new Texture("touchBackground.png");
-		Texture jKnob = new Texture("touchKnob.png");
-		joystick = returnJoystick(HEIGHT/4, jBackground, jKnob);
-		joystick.setBounds(-2*WIDTH/3, -2*HEIGHT/3, WIDTH/6, HEIGHT/6);
-
-//		//create state and add the touchpad as actor
-//		FitViewport view = new FitViewport(WIDTH, HEIGHT, camera);
-//		stage = new Stage(view, batch);
-//		stage.addActor(joystick);
-//		Gdx.input.setInputProcessor(stage);
-//
-//		joystickSpeed = HEIGHT/6;
 
 		//create player physics box
 		BodyDef bodyDefP = new BodyDef();
@@ -77,13 +95,13 @@ public class OwlsGame extends ApplicationAdapter {
 		CircleShape playerCircle = new CircleShape();
 		playerCircle.setRadius(player.getWidth()/2);
 		fixtureDefP.shape = playerCircle;
-		fixtureDefP.density = 3f;
+		fixtureDefP.density = 4f;
 		fixtureDefP.restitution = 0.1f;
 
 		bodyP = world.createBody(bodyDefP);
 		bodyP.createFixture(fixtureDefP);
 
-		bodyP.setLinearVelocity(-WIDTH/8, 0f);
+		bodyP.setLinearVelocity(-WIDTH/6, 0f);
 
 		playerCircle.dispose();
 
@@ -142,10 +160,6 @@ public class OwlsGame extends ApplicationAdapter {
 
 		//set debug renderer
 		debugRenderer = new Box2DDebugRenderer();
-
-		//set camera
-		camera = new OrthographicCamera(WIDTH, HEIGHT);
-
 	}
 
 	@Override
@@ -153,7 +167,7 @@ public class OwlsGame extends ApplicationAdapter {
 
 		//update camera and world
 		camera.update();
-		world.step(Gdx.graphics.getDeltaTime(), 6, 2); //update at 45 times per second (45 Hz)
+		world.step(Gdx.graphics.getDeltaTime(), 6, 2); //update world
 
 		//clear the background and allow stuff to print on screen
 		Gdx.gl.glClearColor(1, 1, 1, 1);
@@ -166,15 +180,15 @@ public class OwlsGame extends ApplicationAdapter {
 		//change position of player
 		player.setPosition(bodyP.getPosition().x-player.getWidth()/2, bodyP.getPosition().y-player.getHeight()/2);
 
-		//execute
+		//execute batch
 		batch.begin();
 		block.draw(batch);
 		player.draw(batch);
 		batch.end();
 
 		//move stage for joystick
-//		stage.act(Gdx.graphics.getDeltaTime());
-//		stage.draw();
+		stage.act(Gdx.graphics.getDeltaTime());
+		stage.draw();
 
 		//debug physics boxes/bodies
 		debugRenderer.render(world, debugMatrix);
