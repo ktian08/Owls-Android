@@ -14,8 +14,12 @@ import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.physics.box2d.Box2DDebugRenderer;
 import com.badlogic.gdx.physics.box2d.CircleShape;
+import com.badlogic.gdx.physics.box2d.Contact;
+import com.badlogic.gdx.physics.box2d.ContactImpulse;
+import com.badlogic.gdx.physics.box2d.ContactListener;
 import com.badlogic.gdx.physics.box2d.EdgeShape;
 import com.badlogic.gdx.physics.box2d.FixtureDef;
+import com.badlogic.gdx.physics.box2d.Manifold;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.Stage;
@@ -26,13 +30,13 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
 public class OwlsGame extends ApplicationAdapter {
 	private SpriteBatch batch;
-	private Sprite block, player;
+	private Sprite block, block2, player;
 	private Stage stage;
 	private World world;
-	private Body body, body2, body3, body4, bodyP;
+	private Body body, body2, body3, body4, bodyP, body5;
 	private float pVelX;
 	private float pVelY;
-	private boolean inAir = false;
+	private boolean inAir = true;
 	private OrthographicCamera camera;
 	private Box2DDebugRenderer debugRenderer;
 	private Matrix4 debugMatrix;
@@ -41,6 +45,9 @@ public class OwlsGame extends ApplicationAdapter {
 	private static final float HEIGHT = 36;
 	private static final float GRAVITY = -10.0f;
 	private float heightGround;
+	private float heightPlatform;
+	private float velChangeX, velChangeY;
+	private float impulseX, impulseY;
 
 	@Override
 	public void create () {
@@ -101,12 +108,14 @@ public class OwlsGame extends ApplicationAdapter {
 
 		bodyP = world.createBody(bodyDefP);
 		bodyP.createFixture(fixtureDefP);
+		bodyP.setUserData(player);
 
 		playerCircle.dispose();
 
 		//create the building block for all platforms
 		Texture img = new Texture("block.png");
 		block = new Sprite(img); //50x50 pixels
+		block2 = new Sprite(img);
 		img.dispose();
 
 		//create ground platform physics box
@@ -171,6 +180,51 @@ public class OwlsGame extends ApplicationAdapter {
 
 		ceiling.dispose();
 
+		//create platform physics box
+		heightPlatform = HEIGHT/10;
+
+		BodyDef bodyDef5 = new BodyDef();
+		bodyDef5.type = BodyDef.BodyType.StaticBody;
+		bodyDef5.position.set(0, -HEIGHT/4+heightPlatform/2);
+
+		FixtureDef fixtureDef5 = new FixtureDef();
+		PolygonShape platform = new PolygonShape();
+
+		platform.setAsBox(WIDTH/8, heightPlatform/2);
+		fixtureDef5.shape = platform;
+
+		body5 = world.createBody(bodyDef5);
+		body5.createFixture(fixtureDef5);
+
+		platform.dispose();
+
+		//create platform block
+		block2.setSize(WIDTH/4, heightPlatform);
+		block2.setPosition(-WIDTH/8, -HEIGHT/4);
+
+		//world contact listener, of utmost importance
+		world.setContactListener(new ContactListener() {
+			@Override
+			public void beginContact(Contact contact) {
+				// Check to see if the collision is between the second sprite and the bottom of the screen
+				// If so apply a random amount of upward force to both objects... just because
+
+			}
+
+			@Override
+			public void endContact(Contact contact) {
+			}
+
+			@Override
+			public void preSolve(Contact contact, Manifold oldManifold) {
+			}
+
+			@Override
+			public void postSolve(Contact contact, ContactImpulse impulse) {
+			}
+		});
+
+
 		//set debug renderer
 		debugRenderer = new Box2DDebugRenderer();
 	}
@@ -191,39 +245,49 @@ public class OwlsGame extends ApplicationAdapter {
 		debugMatrix = batch.getProjectionMatrix().cpy();
 
 		//give body of player velocity, inAir is false at beginning of call
-		pVelX = joystick.getKnobPercentX()*WIDTH/4;
 
-		if(joystick.getKnobPercentY()>0.80 || joystick.getKnobPercentY()<-0.80) { //joystick is in jump range
-			if(inAir) {
-				bodyP.applyForceToCenter(0, -10f*bodyP.getMass(), false); //gravity acts on it, no jump
-				if(bodyP.getLinearVelocity().y==0) {
+		if(joystick.getKnobPercentY()>0.6 || joystick.getKnobPercentY()<-0.6) { //joystick is in jump range
+			if (inAir) {
+				if (joystick.getKnobPercentY() < 0) { //quick fall
+					velChangeY = -1*(HEIGHT / 4) - bodyP.getLinearVelocity().y;
+					impulseY = bodyP.getMass() * velChangeY;
+					bodyP.applyLinearImpulse(0, impulseY, bodyP.getPosition().x, bodyP.getPosition().y, true);
+				}
+
+				if (bodyP.getLinearVelocity().y == 0f) {
 					inAir = false;
 				}
 			} else {
-				pVelY = joystick.getKnobPercentY()*1/Math.abs(joystick.getKnobPercentY())*2*HEIGHT/3; //impart an upwards velocity
-				bodyP.setLinearVelocity(pVelX, pVelY);
+				velChangeY = (5 * HEIGHT / 12) - bodyP.getLinearVelocity().y;
+				impulseY = bodyP.getMass() * velChangeY;
+				bodyP.applyLinearImpulse(0, impulseY, bodyP.getPosition().x, bodyP.getPosition().y, true);
+
 				inAir = true;
 			}
 		} else { //not in jump range
 			if(inAir) {
-				bodyP.applyForceToCenter(0, -10f * bodyP.getMass(), false); //gravity acts on it, no jump
-				if (bodyP.getLinearVelocity().y == 0 && body4.getPosition().y - bodyP.getPosition().y > player.getHeight()/2) {
+				if (bodyP.getLinearVelocity().y == 0 && body4.getPosition().y - bodyP.getPosition().y > ((Sprite) bodyP.getUserData()).getHeight() / 2) {
 					inAir = false;
 				}
 			} else {
-				pVelY = 0;
-				bodyP.setLinearVelocity(pVelX, pVelY);
-				inAir = false;
+				velChangeX = joystick.getKnobPercentX()*(WIDTH / 6) - bodyP.getLinearVelocity().x;
+				impulseX = bodyP.getMass()*velChangeX;
+				bodyP.applyLinearImpulse(impulseX, 0, bodyP.getPosition().x, bodyP.getPosition().y, true);
+
+				if(bodyP.getLinearVelocity().y != 0f) {
+					inAir = true;
+				}
 			}
 		}
 
 		//change position of player based on body
-		player.setPosition(bodyP.getPosition().x-player.getWidth()/2, bodyP.getPosition().y-player.getHeight()/2);
+		((Sprite)bodyP.getUserData()).setPosition(bodyP.getPosition().x-player.getWidth()/2, bodyP.getPosition().y-player.getHeight()/2);
 
 		//execute batch
 		batch.begin();
-		block.draw(batch);
-		player.draw(batch);
+		block.draw(batch); //ground
+		block2.draw(batch); //platform
+		player.draw(batch); //player
 		batch.end();
 
 		//move stage for joystick
