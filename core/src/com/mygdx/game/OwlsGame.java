@@ -200,7 +200,7 @@ public class OwlsGame extends ApplicationAdapter {
 					inAir = false;
 				}
 			} else {
-				pVelY = joystick.getKnobPercentY()*1/Math.abs(joystick.getKnobPercentY())*HEIGHT; //impart an upwards velocity
+				pVelY = joystick.getKnobPercentY()*1/Math.abs(joystick.getKnobPercentY())*2*HEIGHT/3; //impart an upwards velocity
 				bodyP.setLinearVelocity(pVelX, pVelY);
 				inAir = true;
 			}
