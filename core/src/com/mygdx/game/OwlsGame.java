@@ -29,7 +29,7 @@ public class OwlsGame extends ApplicationAdapter {
 	private Sprite block, player;
 	private Stage stage;
 	private World world;
-	private Body body, body2, body3, bodyP;
+	private Body body, body2, body3, body4, bodyP;
 	private float pVelX;
 	private float pVelY;
 	private boolean inAir = false;
@@ -97,7 +97,7 @@ public class OwlsGame extends ApplicationAdapter {
 		playerCircle.setRadius(player.getWidth()/2);
 		fixtureDefP.shape = playerCircle;
 		fixtureDefP.density = 4f;
-		fixtureDefP.restitution = 0;
+		fixtureDefP.restitution = 0.05f;
 
 		bodyP = world.createBody(bodyDefP);
 		bodyP.createFixture(fixtureDefP);
@@ -157,6 +157,20 @@ public class OwlsGame extends ApplicationAdapter {
 
 		wall2.dispose();
 
+		//create ceiling physics box
+		BodyDef bodyDef4 = new BodyDef();
+		bodyDef4.type = BodyDef.BodyType.StaticBody;
+
+		FixtureDef fixtureDef4 = new FixtureDef();
+		EdgeShape ceiling = new EdgeShape();
+		ceiling.set(-WIDTH/2, HEIGHT/2, WIDTH/2, HEIGHT/2);
+		fixtureDef4.shape = ceiling;
+
+		body4 = world.createBody(bodyDef4);
+		body4.createFixture(fixtureDef4);
+
+		ceiling.dispose();
+
 		//set debug renderer
 		debugRenderer = new Box2DDebugRenderer();
 	}
@@ -179,21 +193,21 @@ public class OwlsGame extends ApplicationAdapter {
 		//give body of player velocity, inAir is false at beginning of call
 		pVelX = joystick.getKnobPercentX()*WIDTH/4;
 
-		if(joystick.getKnobPercentY()>0.95 || joystick.getKnobPercentY()<-0.95) { //joystick is in jump range
+		if(joystick.getKnobPercentY()>0.80 || joystick.getKnobPercentY()<-0.80) { //joystick is in jump range
 			if(inAir) {
 				bodyP.applyForceToCenter(0, -10f*bodyP.getMass(), false); //gravity acts on it, no jump
 				if(bodyP.getLinearVelocity().y==0) {
 					inAir = false;
 				}
 			} else {
-				pVelY = joystick.getKnobPercentY()*1/Math.abs(joystick.getKnobPercentY())*HEIGHT/2; //impart an upwards velocity
+				pVelY = joystick.getKnobPercentY()*1/Math.abs(joystick.getKnobPercentY())*HEIGHT; //impart an upwards velocity
 				bodyP.setLinearVelocity(pVelX, pVelY);
 				inAir = true;
 			}
 		} else { //not in jump range
 			if(inAir) {
 				bodyP.applyForceToCenter(0, -10f * bodyP.getMass(), false); //gravity acts on it, no jump
-				if (bodyP.getLinearVelocity().y == 0) {
+				if (bodyP.getLinearVelocity().y == 0 && body4.getPosition().y - bodyP.getPosition().y > player.getHeight()/2) {
 					inAir = false;
 				}
 			} else {
