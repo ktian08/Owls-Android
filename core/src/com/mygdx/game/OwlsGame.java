@@ -30,15 +30,18 @@ public class OwlsGame extends ApplicationAdapter {
 	private Stage stage;
 	private World world;
 	private Body body, body2, body3, bodyP;
+	private float pVelX;
+	private float pVelY;
+	private boolean inAir = false;
 	private OrthographicCamera camera;
 	private Box2DDebugRenderer debugRenderer;
 	private Matrix4 debugMatrix;
 	private Touchpad joystick;
-	private float joystickSpeed;
 	private static final float WIDTH = 64;
 	private static final float HEIGHT = 36;
+	private static final float GRAVITY = -10.0f;
 	private float heightGround;
-	
+
 	@Override
 	public void create () {
 
@@ -46,7 +49,7 @@ public class OwlsGame extends ApplicationAdapter {
 		batch = new SpriteBatch();
 
 		//create world with -10 gravity in vert direction
-		world = new World(new Vector2(0.0f, -10.0f), true);
+		world = new World(new Vector2(0.0f, GRAVITY), true);
 
 		//set camera
 		camera = new OrthographicCamera(WIDTH, HEIGHT);
@@ -75,8 +78,6 @@ public class OwlsGame extends ApplicationAdapter {
 		stage = new Stage(new ScreenViewport());
 		stage.addActor(joystick);
 
-		joystickSpeed = HEIGHT/6;
-
 		Gdx.input.setInputProcessor(stage);
 
 		//create player sprite
@@ -96,12 +97,10 @@ public class OwlsGame extends ApplicationAdapter {
 		playerCircle.setRadius(player.getWidth()/2);
 		fixtureDefP.shape = playerCircle;
 		fixtureDefP.density = 4f;
-		fixtureDefP.restitution = 0.1f;
+		fixtureDefP.restitution = 0;
 
 		bodyP = world.createBody(bodyDefP);
 		bodyP.createFixture(fixtureDefP);
-
-		bodyP.setLinearVelocity(-WIDTH/6, 0f);
 
 		playerCircle.dispose();
 
@@ -177,7 +176,34 @@ public class OwlsGame extends ApplicationAdapter {
 		batch.setProjectionMatrix(camera.combined);
 		debugMatrix = batch.getProjectionMatrix().cpy();
 
-		//change position of player
+		//give body of player velocity, inAir is false at beginning of call
+		pVelX = joystick.getKnobPercentX()*WIDTH/4;
+
+		if(joystick.getKnobPercentY()>0.95 || joystick.getKnobPercentY()<-0.95) { //joystick is in jump range
+			if(inAir) {
+				bodyP.applyForceToCenter(0, -10f*bodyP.getMass(), false); //gravity acts on it, no jump
+				if(bodyP.getLinearVelocity().y==0) {
+					inAir = false;
+				}
+			} else {
+				pVelY = joystick.getKnobPercentY()*1/Math.abs(joystick.getKnobPercentY())*HEIGHT/2; //impart an upwards velocity
+				bodyP.setLinearVelocity(pVelX, pVelY);
+				inAir = true;
+			}
+		} else { //not in jump range
+			if(inAir) {
+				bodyP.applyForceToCenter(0, -10f * bodyP.getMass(), false); //gravity acts on it, no jump
+				if (bodyP.getLinearVelocity().y == 0) {
+					inAir = false;
+				}
+			} else {
+				pVelY = 0;
+				bodyP.setLinearVelocity(pVelX, pVelY);
+				inAir = false;
+			}
+		}
+
+		//change position of player based on body
 		player.setPosition(bodyP.getPosition().x-player.getWidth()/2, bodyP.getPosition().y-player.getHeight()/2);
 
 		//execute batch
@@ -194,7 +220,7 @@ public class OwlsGame extends ApplicationAdapter {
 		debugRenderer.render(world, debugMatrix);
 
 	}
-	
+
 	@Override
 	public void dispose () {
 
