@@ -18,6 +18,7 @@ import com.badlogic.gdx.physics.box2d.Contact;
 import com.badlogic.gdx.physics.box2d.ContactImpulse;
 import com.badlogic.gdx.physics.box2d.ContactListener;
 import com.badlogic.gdx.physics.box2d.EdgeShape;
+import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.physics.box2d.FixtureDef;
 import com.badlogic.gdx.physics.box2d.Manifold;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
@@ -43,7 +44,7 @@ public class OwlsGame extends ApplicationAdapter {
 	private Touchpad joystick;
 	private static final float WIDTH = 64;
 	private static final float HEIGHT = 36;
-	private static final float GRAVITY = -10.0f;
+	private static final float GRAVITY = -12.0f;
 	private float heightGround;
 	private float heightPlatform;
 	private float velChangeX, velChangeY;
@@ -108,7 +109,7 @@ public class OwlsGame extends ApplicationAdapter {
 
 		bodyP = world.createBody(bodyDefP);
 		bodyP.createFixture(fixtureDefP);
-		bodyP.setUserData(player);
+		bodyP.setUserData("player"); //for the world listener
 
 		playerCircle.dispose();
 
@@ -195,6 +196,7 @@ public class OwlsGame extends ApplicationAdapter {
 
 		body5 = world.createBody(bodyDef5);
 		body5.createFixture(fixtureDef5);
+		body5.setUserData("platform"); //for the world listener
 
 		platform.dispose();
 
@@ -217,6 +219,23 @@ public class OwlsGame extends ApplicationAdapter {
 
 			@Override
 			public void preSolve(Contact contact, Manifold oldManifold) {
+				Fixture fixtureA = contact.getFixtureA();
+				Fixture fixtureB = contact.getFixtureB();
+				float platformY = 0;
+				float playerY = 0;
+				if(fixtureA.getBody().getUserData() == "platform" && fixtureB.getBody().getUserData() == "player"
+						|| fixtureA.getBody().getUserData() == "player" && fixtureB.getBody().getUserData() == "platform"){
+					if(fixtureA.getBody().getUserData()=="platform") {
+						platformY = fixtureA.getBody().getPosition().y;
+						playerY = fixtureB.getBody().getPosition().y;
+					} else if(fixtureA.getBody().getUserData()=="player") {
+						platformY = fixtureA.getBody().getPosition().y;
+						playerY = fixtureB.getBody().getPosition().y;
+					}
+					if(playerY < (platformY + 100*player.getHeight()/101)) { // the player is below
+						contact.setEnabled(false);
+					}
+				}
 			}
 
 			@Override
@@ -266,7 +285,7 @@ public class OwlsGame extends ApplicationAdapter {
 			}
 		} else { //not in jump range
 			if(inAir) {
-				if (bodyP.getLinearVelocity().y == 0 && body4.getPosition().y - bodyP.getPosition().y > ((Sprite) bodyP.getUserData()).getHeight() / 2) {
+				if (bodyP.getLinearVelocity().y == 0 && body4.getPosition().y - bodyP.getPosition().y > player.getHeight() / 2) {
 					inAir = false;
 				}
 			} else {
@@ -281,7 +300,7 @@ public class OwlsGame extends ApplicationAdapter {
 		}
 
 		//change position of player based on body
-		((Sprite)bodyP.getUserData()).setPosition(bodyP.getPosition().x-player.getWidth()/2, bodyP.getPosition().y-player.getHeight()/2);
+		player.setPosition(bodyP.getPosition().x-player.getWidth()/2, bodyP.getPosition().y-player.getHeight()/2);
 
 		//execute batch
 		batch.begin();
