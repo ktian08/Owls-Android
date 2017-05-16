@@ -2,11 +2,11 @@ package com.mygdx.game;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Matrix4;
@@ -24,12 +24,11 @@ import com.badlogic.gdx.physics.box2d.FixtureDef;
 import com.badlogic.gdx.physics.box2d.Manifold;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.World;
-import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
-import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Touchpad;
-import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
+
+import static com.mygdx.game.Joystick.returnTouchpadStyle;
 
 public class OwlsGame extends ApplicationAdapter {
 	private SpriteBatch batch;
@@ -41,7 +40,7 @@ public class OwlsGame extends ApplicationAdapter {
 	private OrthographicCamera camera;
 	private Box2DDebugRenderer debugRenderer;
 	private Matrix4 debugMatrix;
-	private Touchpad joystick;
+	private Joystick joystick;
 	private static final float WIDTH = 64;
 	private static final float HEIGHT = 36;
 	private static final float GRAVITY = -12.0f;
@@ -63,64 +62,40 @@ public class OwlsGame extends ApplicationAdapter {
 		camera = new OrthographicCamera(WIDTH, HEIGHT);
 
 		//create the joystick
-		Pixmap background = new Pixmap(Gdx.files.internal("touchBackground.png"));
-		Pixmap background2 = new Pixmap(Gdx.graphics.getHeight()/3, Gdx.graphics.getHeight()/3, background.getFormat()); //resizing the texture!
-		background2.drawPixmap(background, 0, 0, background.getWidth(), background.getHeight()
-				, 0, 0, background2.getWidth(), background2.getHeight());
-		Texture jBackground = new Texture(background2);
-		background.dispose();
-		background2.dispose();
+		FileHandle backgroundHandle = Gdx.files.internal("touchBackground.png");
+		FileHandle knobHandle = Gdx.files.internal("touchKnob.png");
 
-		Pixmap knob = new Pixmap(Gdx.files.internal("touchKnob.png"));
-		Pixmap knob2 = new Pixmap(Gdx.graphics.getHeight()/8, Gdx.graphics.getHeight()/8, knob.getFormat()); //resizing the texture!
-		knob2.drawPixmap(knob, 0, 0, knob.getWidth(), knob.getHeight()
-				, 0, 0, knob2.getWidth(), knob2.getHeight());
-		Texture jKnob = new Texture(knob2);
+		Texture jBackground = resizedTexture(backgroundHandle, Gdx.graphics.getHeight()/3, Gdx.graphics.getHeight()/3, 0, 0, 0, 0);
+		Texture jKnob = resizedTexture(knobHandle, Gdx.graphics.getHeight()/8, Gdx.graphics.getHeight()/8, 0, 0, 0, 0);
 
-		knob.dispose();
-		knob2.dispose();
-
-		joystick = returnJoystick(0, jBackground, jKnob);
+		Touchpad.TouchpadStyle joystickStyle = returnTouchpadStyle(jBackground, jKnob);
+		joystick = new Joystick(0, joystickStyle);
 		joystick.setBounds(Gdx.graphics.getWidth()/20, Gdx.graphics.getHeight()/10 //origin is bottom left for stage
 				, jBackground.getWidth(), jBackground.getWidth()); //joystick is set to screen viewport, so treat as if it's the whole screen not the world
 
-		//create shooter button
+		//create shooter UI
 
-		ShooterButtonActor bottomButton = new ShooterButtonActor();
-		bottomButton.setX(Gdx.graphics.getWidth()*5/6); bottomButton.setY(Gdx.graphics.getHeight()/10);
-		bottomButton.setWidth(Gdx.graphics.getHeight()/10); bottomButton.setHeight(Gdx.graphics.getHeight()/10); //make sure it stays in bounds!
-
-		float commonD = bottomButton.getHeight(); //set bottom button and commonD for the whole pad
-
-		ShooterButtonActor topButton = new ShooterButtonActor();
-		topButton.setX(bottomButton.getX()); topButton.setY(bottomButton.getY()+commonD*2);
-		topButton.setWidth(bottomButton.getWidth()); topButton.setHeight(bottomButton.getHeight());
-
-		ShooterButtonActor rightButton = new ShooterButtonActor();
-		rightButton.setX(bottomButton.getX()+commonD); rightButton.setY(bottomButton.getY()+commonD);
-		rightButton.setWidth(bottomButton.getWidth()); rightButton.setHeight(bottomButton.getWidth()); //make sure it stays in bounds!
-
-		ShooterButtonActor leftButton = new ShooterButtonActor();
-		leftButton.setX(bottomButton.getX()-commonD); leftButton.setY(rightButton.getY());
-		leftButton.setWidth(bottomButton.getWidth()); leftButton.setHeight(bottomButton.getWidth());
+		ShooterUI shooterUI = new ShooterUI(Gdx.graphics.getHeight()/10);
+		shooterUI.configureShooterUI(Gdx.graphics.getWidth()*5/6, Gdx.graphics.getHeight()/10
+				, Gdx.graphics.getHeight()/10, Gdx.graphics.getHeight()/10);
 
 		//create state and add the touchpad and bullet buttons as actors
 		stage = new Stage(new ScreenViewport());
-		stage.addActor(joystick);
 
-		stage.addActor(topButton);
-		stage.addActor(bottomButton);
-		stage.addActor(leftButton);
-		stage.addActor(rightButton);
+		stage.addActor(joystick);
+		stage.addActor(shooterUI.topButton);
+		stage.addActor(shooterUI.bottomButton);
+		stage.addActor(shooterUI.leftButton);
+		stage.addActor(shooterUI.rightButton);
 
 		Gdx.input.setInputProcessor(stage);
+		
 
 		//create player sprite
-		Texture i = new Texture("whitecircle.png");
-		player = new Sprite(i); //400x400 pixels
+		player = new Sprite(new Texture("whitecircle.png")); //400x400 pixels
 
 		player.setSize(HEIGHT/10, HEIGHT/10);
-		player.setPosition(0, 10);
+		player.setPosition(0, 0);
 
 		//create player physics box
 		BodyDef bodyDefP = new BodyDef();
@@ -295,7 +270,7 @@ public class OwlsGame extends ApplicationAdapter {
 		if(joystick.getKnobPercentY()>0.6 || joystick.getKnobPercentY()<-0.6) { //joystick is in jump range
 			if (inAir) {
 				if (joystick.getKnobPercentY() < 0) { //quick fall
-					velChangeY = -1*(HEIGHT / 4) - bodyP.getLinearVelocity().y;
+					velChangeY = -1*(HEIGHT / 3) - bodyP.getLinearVelocity().y;
 					impulseY = bodyP.getMass() * velChangeY;
 					bodyP.applyLinearImpulse(0, impulseY, bodyP.getPosition().x, bodyP.getPosition().y, true);
 				}
@@ -345,6 +320,23 @@ public class OwlsGame extends ApplicationAdapter {
 
 	}
 
+	//return resized texture
+	public Texture resizedTexture(FileHandle handle,
+								  int width, int height,
+								  int srcx, int srcy,
+								  int dstx, int dsty) {
+
+		Pixmap pix = new Pixmap(handle);
+		Pixmap pix2 = new Pixmap(width, height, pix.getFormat());
+		pix2.drawPixmap(pix, srcx, srcy, pix.getWidth(), pix.getHeight(), dstx, dsty, pix2.getWidth(), pix2.getHeight());
+
+		Texture texture = new Texture(pix2);
+		pix.dispose();
+		pix2.dispose();
+
+		return texture;
+	}
+
 	@Override
 	public void dispose () {
 
@@ -355,6 +347,11 @@ public class OwlsGame extends ApplicationAdapter {
 		stage.dispose();
 
 	}
+
+
+
+
+
 
 	@Override
 	public void resize(int width, int height) {
@@ -368,40 +365,6 @@ public class OwlsGame extends ApplicationAdapter {
 	public void resume() {
 	}
 
-	//to create the joystick with given pictures
-	public Touchpad returnJoystick(float deadzoneRadius, Texture jBackground, Texture jKnob) {
 
-		Skin joystickSkin = new Skin();
-
-		joystickSkin.add("touchBackground", jBackground);
-		joystickSkin.add("touchKnob", jKnob);
-
-		Touchpad.TouchpadStyle joystickStyle = new Touchpad.TouchpadStyle();
-
-		Drawable touchBackground = joystickSkin.getDrawable("touchBackground");
-		Drawable touchKnob = joystickSkin.getDrawable("touchKnob");
-
-		joystickStyle.background = touchBackground;
-		joystickStyle.knob = touchKnob;
-
-		Touchpad stick = new Touchpad(deadzoneRadius, joystickStyle);
-
-		return stick;
-	}
-
-	//to create shooter button actors
-	public class ShooterButtonActor extends Actor {
-		Sprite button;
-
-		public ShooterButtonActor() {
-			Texture texture = new Texture("shootButton.png");
-			button = new Sprite(texture);
-		}
-
-		@Override
-		public void draw(Batch batch, float alpha){
-			batch.draw(button, getX(), getY(), getWidth(), getHeight());
-		}
-	}
 
 }
