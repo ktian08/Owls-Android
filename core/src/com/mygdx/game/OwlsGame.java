@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Matrix4;
@@ -23,6 +24,7 @@ import com.badlogic.gdx.physics.box2d.FixtureDef;
 import com.badlogic.gdx.physics.box2d.Manifold;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.World;
+import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Touchpad;
@@ -35,8 +37,6 @@ public class OwlsGame extends ApplicationAdapter {
 	private Stage stage;
 	private World world;
 	private Body body, body2, body3, body4, bodyP, body5;
-	private float pVelX;
-	private float pVelY;
 	private boolean inAir = true;
 	private OrthographicCamera camera;
 	private Box2DDebugRenderer debugRenderer;
@@ -56,7 +56,7 @@ public class OwlsGame extends ApplicationAdapter {
 		//initialize the batch
 		batch = new SpriteBatch();
 
-		//create world with -10 gravity in vert direction
+		//create world with -12 gravity in vert direction
 		world = new World(new Vector2(0.0f, GRAVITY), true);
 
 		//set camera
@@ -70,11 +70,13 @@ public class OwlsGame extends ApplicationAdapter {
 		Texture jBackground = new Texture(background2);
 		background.dispose();
 		background2.dispose();
+
 		Pixmap knob = new Pixmap(Gdx.files.internal("touchKnob.png"));
 		Pixmap knob2 = new Pixmap(Gdx.graphics.getHeight()/8, Gdx.graphics.getHeight()/8, knob.getFormat()); //resizing the texture!
 		knob2.drawPixmap(knob, 0, 0, knob.getWidth(), knob.getHeight()
 				, 0, 0, knob2.getWidth(), knob2.getHeight());
 		Texture jKnob = new Texture(knob2);
+
 		knob.dispose();
 		knob2.dispose();
 
@@ -82,9 +84,34 @@ public class OwlsGame extends ApplicationAdapter {
 		joystick.setBounds(Gdx.graphics.getWidth()/20, Gdx.graphics.getHeight()/10 //origin is bottom left for stage
 				, jBackground.getWidth(), jBackground.getWidth()); //joystick is set to screen viewport, so treat as if it's the whole screen not the world
 
-		//create state and add the touchpad as actor
+		//create shooter button
+
+		ShooterButtonActor bottomButton = new ShooterButtonActor();
+		bottomButton.setX(Gdx.graphics.getWidth()*5/6); bottomButton.setY(Gdx.graphics.getHeight()/10);
+		bottomButton.setWidth(Gdx.graphics.getHeight()/10); bottomButton.setHeight(Gdx.graphics.getHeight()/10); //make sure it stays in bounds!
+
+		float commonD = bottomButton.getHeight(); //set bottom button and commonD for the whole pad
+
+		ShooterButtonActor topButton = new ShooterButtonActor();
+		topButton.setX(bottomButton.getX()); topButton.setY(bottomButton.getY()+commonD*2);
+		topButton.setWidth(bottomButton.getWidth()); topButton.setHeight(bottomButton.getHeight());
+
+		ShooterButtonActor rightButton = new ShooterButtonActor();
+		rightButton.setX(bottomButton.getX()+commonD); rightButton.setY(bottomButton.getY()+commonD);
+		rightButton.setWidth(bottomButton.getWidth()); rightButton.setHeight(bottomButton.getWidth()); //make sure it stays in bounds!
+
+		ShooterButtonActor leftButton = new ShooterButtonActor();
+		leftButton.setX(bottomButton.getX()-commonD); leftButton.setY(rightButton.getY());
+		leftButton.setWidth(bottomButton.getWidth()); leftButton.setHeight(bottomButton.getWidth());
+
+		//create state and add the touchpad and bullet buttons as actors
 		stage = new Stage(new ScreenViewport());
 		stage.addActor(joystick);
+
+		stage.addActor(topButton);
+		stage.addActor(bottomButton);
+		stage.addActor(leftButton);
+		stage.addActor(rightButton);
 
 		Gdx.input.setInputProcessor(stage);
 
@@ -223,16 +250,16 @@ public class OwlsGame extends ApplicationAdapter {
 				Fixture fixtureB = contact.getFixtureB();
 				float platformY = 0;
 				float playerY = 0;
-				if(fixtureA.getBody().getUserData() == "platform" && fixtureB.getBody().getUserData() == "player"
-						|| fixtureA.getBody().getUserData() == "player" && fixtureB.getBody().getUserData() == "platform"){
-					if(fixtureA.getBody().getUserData()=="platform") {
+				if(fixtureA.getBody().getUserData() == "platform" && fixtureB.getBody().getUserData() == "player" //collision between player and platform
+						|| fixtureA.getBody().getUserData() == "player" && fixtureB.getBody().getUserData() == "platform") {
+					if (fixtureA.getBody().getUserData() == "platform") {
 						platformY = fixtureA.getBody().getPosition().y;
 						playerY = fixtureB.getBody().getPosition().y;
-					} else if(fixtureA.getBody().getUserData()=="player") {
+					} else if (fixtureA.getBody().getUserData() == "player") {
 						platformY = fixtureA.getBody().getPosition().y;
 						playerY = fixtureB.getBody().getPosition().y;
 					}
-					if(playerY < (platformY + 100*player.getHeight()/101)) { // the player is below
+					if (playerY < (platformY + 100 * player.getHeight() / 101)) { // the player is below
 						contact.setEnabled(false);
 					}
 				}
@@ -361,4 +388,20 @@ public class OwlsGame extends ApplicationAdapter {
 
 		return stick;
 	}
+
+	//to create shooter button actors
+	public class ShooterButtonActor extends Actor {
+		Sprite button;
+
+		public ShooterButtonActor() {
+			Texture texture = new Texture("shootButton.png");
+			button = new Sprite(texture);
+		}
+
+		@Override
+		public void draw(Batch batch, float alpha){
+			batch.draw(button, getX(), getY(), getWidth(), getHeight());
+		}
+	}
+
 }
