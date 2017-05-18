@@ -17,6 +17,8 @@ public class Player {
     public boolean inAir;
     private float velChangeY, impulseY, velChangeX, impulseX;
     public World world;
+    public long timeAfterLastBullet = 0;
+    public boolean canShoot = true;
 
     public ArrayList<Bullet> bulletList;
 
@@ -37,6 +39,7 @@ public class Player {
         } else {
             inAir = false;
         }
+
 
     }
 
@@ -114,15 +117,27 @@ public class Player {
 
     //click to shoot button
     public void clickToShoot(ShooterUI shooterUI, float xVel, float yVel) {
-        if(shooterUI.leftTouch) {
-           shoot(1, xVel, yVel);
-        } else if(shooterUI.topTouch) {
-            shoot(2, xVel, yVel);
-        } else if(shooterUI.rightTouch) {
-            shoot(3, xVel, yVel);
-        } else if(shooterUI.bottomTouch) {
-            shoot(4, xVel, yVel);
+
+        if(canShoot) {
+            if (shooterUI.leftTouch) {
+                shoot(1, xVel, yVel);
+                canShoot = false;
+                timeAfterLastBullet = 0;
+            } else if (shooterUI.topTouch) {
+                shoot(2, xVel, yVel);
+                canShoot = false;
+                timeAfterLastBullet = 0;
+            } else if (shooterUI.rightTouch) {
+                shoot(3, xVel, yVel);
+                canShoot = false;
+                timeAfterLastBullet = 0;
+            } else if (shooterUI.bottomTouch) {
+                shoot(4, xVel, yVel);
+                canShoot = false;
+                timeAfterLastBullet = 0;
+            }
         }
+
     }
 
     //shoot bullet

@@ -77,7 +77,7 @@ public class OwlsGame extends ApplicationAdapter {
 
 		shooterUI = new ShooterUI(Gdx.graphics.getHeight()/10);
 		shooterUI.configureShooterUI(Gdx.graphics.getWidth()*5/6, Gdx.graphics.getHeight()/10
-				, Gdx.graphics.getHeight()/10, Gdx.graphics.getHeight()/10);
+				, Gdx.graphics.getHeight()/8, Gdx.graphics.getHeight()/8);
 
 		//create state and add the touchpad and bullet buttons as actors
 		stage = new Stage(new ScreenViewport());
@@ -222,7 +222,6 @@ public class OwlsGame extends ApplicationAdapter {
 			}
 		});
 
-
 		//set debug renderer
 		debugRenderer = new Box2DDebugRenderer();
 	}
@@ -248,8 +247,12 @@ public class OwlsGame extends ApplicationAdapter {
 		//change position of player based on body
 		player1.updatePosition();
 
-		//shoot bullets in proper directions
-		player1.clickToShoot(shooterUI, HEIGHT, HEIGHT);
+		//shoot bullets in proper directions + add delay
+		player1.timeAfterLastBullet+=1000*Gdx.graphics.getDeltaTime(); //in milliseconds
+		if(player1.timeAfterLastBullet>1000f) {
+			player1.canShoot = true;
+		}
+		player1.clickToShoot(shooterUI, WIDTH/2, HEIGHT); //shoots and updates timeAfterLastBullet, canShoot
 
 		//change position of bullets
 		player1.updateBulletPositions();
@@ -289,6 +292,7 @@ public class OwlsGame extends ApplicationAdapter {
 		pix2.dispose();
 
 		return texture;
+
 	}
 
 	@Override
