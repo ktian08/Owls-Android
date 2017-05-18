@@ -14,7 +14,6 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.physics.box2d.Box2DDebugRenderer;
-import com.badlogic.gdx.physics.box2d.CircleShape;
 import com.badlogic.gdx.physics.box2d.Contact;
 import com.badlogic.gdx.physics.box2d.ContactImpulse;
 import com.badlogic.gdx.physics.box2d.ContactListener;
@@ -31,12 +30,14 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import static com.mygdx.game.Joystick.returnTouchpadStyle;
 
 public class OwlsGame extends ApplicationAdapter {
+
 	private SpriteBatch batch;
-	private Sprite block, block2, player;
-	private Stage stage;
 	private World world;
-	private Body body, body2, body3, body4, bodyP, body5;
-	private boolean inAir = true;
+	private Stage stage;
+
+	private Sprite block, block2, playerSprite;
+	private Player player1;
+	private Body body, body2, body3, body4, body5;
 	private OrthographicCamera camera;
 	private Box2DDebugRenderer debugRenderer;
 	private Matrix4 debugMatrix;
@@ -46,8 +47,7 @@ public class OwlsGame extends ApplicationAdapter {
 	private static final float GRAVITY = -12.0f;
 	private float heightGround;
 	private float heightPlatform;
-	private float velChangeX, velChangeY;
-	private float impulseX, impulseY;
+	private ShooterUI shooterUI;
 
 	@Override
 	public void create () {
@@ -75,7 +75,7 @@ public class OwlsGame extends ApplicationAdapter {
 
 		//create shooter UI
 
-		ShooterUI shooterUI = new ShooterUI(Gdx.graphics.getHeight()/10);
+		shooterUI = new ShooterUI(Gdx.graphics.getHeight()/10);
 		shooterUI.configureShooterUI(Gdx.graphics.getWidth()*5/6, Gdx.graphics.getHeight()/10
 				, Gdx.graphics.getHeight()/10, Gdx.graphics.getHeight()/10);
 
@@ -89,33 +89,12 @@ public class OwlsGame extends ApplicationAdapter {
 		stage.addActor(shooterUI.rightButton);
 
 		Gdx.input.setInputProcessor(stage);
-		
 
-		//create player sprite
-		player = new Sprite(new Texture("whitecircle.png")); //400x400 pixels
+		//create player1
+		playerSprite = new Sprite(new Texture("whitecircle.png"));
+		player1 = new Player(playerSprite, HEIGHT/10, HEIGHT/10, 0, 0, world);
 
-		player.setSize(HEIGHT/10, HEIGHT/10);
-		player.setPosition(0, 0);
-
-		//create player physics box
-		BodyDef bodyDefP = new BodyDef();
-		bodyDefP.type = BodyDef.BodyType.DynamicBody;
-		bodyDefP.position.set(player.getX()+player.getWidth()/2, player.getY()+player.getHeight()/2);
-
-		FixtureDef fixtureDefP = new FixtureDef();
-		CircleShape playerCircle = new CircleShape();
-		playerCircle.setRadius(player.getWidth()/2);
-		fixtureDefP.shape = playerCircle;
-		fixtureDefP.density = 4f;
-		fixtureDefP.restitution = 0.05f;
-
-		bodyP = world.createBody(bodyDefP);
-		bodyP.createFixture(fixtureDefP);
-		bodyP.setUserData("player"); //for the world listener
-
-		playerCircle.dispose();
-
-		//create the building block for all platforms
+		//create building blocks for all platforms
 		Texture img = new Texture("block.png");
 		block = new Sprite(img); //50x50 pixels
 		block2 = new Sprite(img);
@@ -141,7 +120,7 @@ public class OwlsGame extends ApplicationAdapter {
 		block.setSize(WIDTH, heightGround); //block is now width by heightGround
 		block.setPosition(-WIDTH/2, -HEIGHT/2); //set position to bottom left
 
-		//create left wall physics box
+		//create left wall
 		BodyDef bodyDef2 = new BodyDef();
 		bodyDef2.type = BodyDef.BodyType.StaticBody;
 
@@ -155,7 +134,7 @@ public class OwlsGame extends ApplicationAdapter {
 
 		wall1.dispose();
 
-		//create right wall physics box
+		//create right wall
 		BodyDef bodyDef3 = new BodyDef();
 		bodyDef3.type = BodyDef.BodyType.StaticBody;
 
@@ -169,7 +148,7 @@ public class OwlsGame extends ApplicationAdapter {
 
 		wall2.dispose();
 
-		//create ceiling physics box
+		//create ceiling
 		BodyDef bodyDef4 = new BodyDef();
 		bodyDef4.type = BodyDef.BodyType.StaticBody;
 
@@ -234,7 +213,7 @@ public class OwlsGame extends ApplicationAdapter {
 						platformY = fixtureA.getBody().getPosition().y;
 						playerY = fixtureB.getBody().getPosition().y;
 					}
-					if (playerY < (platformY + 100 * player.getHeight() / 101)) { // the player is below
+					if (playerY < (platformY + 100 * player1.getPlayerSprite().getHeight() / 101)) { // the player is below
 						contact.setEnabled(false);
 					}
 				}
@@ -265,50 +244,24 @@ public class OwlsGame extends ApplicationAdapter {
 		batch.setProjectionMatrix(camera.combined);
 		debugMatrix = batch.getProjectionMatrix().cpy();
 
-		//give body of player velocity, inAir is false at beginning of call
-
-		if(joystick.getKnobPercentY()>0.6 || joystick.getKnobPercentY()<-0.6) { //joystick is in jump range
-			if (inAir) {
-				if (joystick.getKnobPercentY() < 0) { //quick fall
-					velChangeY = -1*(HEIGHT / 3) - bodyP.getLinearVelocity().y;
-					impulseY = bodyP.getMass() * velChangeY;
-					bodyP.applyLinearImpulse(0, impulseY, bodyP.getPosition().x, bodyP.getPosition().y, true);
-				}
-
-				if (bodyP.getLinearVelocity().y == 0f) {
-					inAir = false;
-				}
-			} else {
-				velChangeY = (5 * HEIGHT / 12) - bodyP.getLinearVelocity().y;
-				impulseY = bodyP.getMass() * velChangeY;
-				bodyP.applyLinearImpulse(0, impulseY, bodyP.getPosition().x, bodyP.getPosition().y, true);
-
-				inAir = true;
-			}
-		} else { //not in jump range
-			if(inAir) {
-				if (bodyP.getLinearVelocity().y == 0 && body4.getPosition().y - bodyP.getPosition().y > player.getHeight() / 2) {
-					inAir = false;
-				}
-			} else {
-				velChangeX = joystick.getKnobPercentX()*(WIDTH / 6) - bodyP.getLinearVelocity().x;
-				impulseX = bodyP.getMass()*velChangeX;
-				bodyP.applyLinearImpulse(impulseX, 0, bodyP.getPosition().x, bodyP.getPosition().y, true);
-
-				if(bodyP.getLinearVelocity().y != 0f) {
-					inAir = true;
-				}
-			}
-		}
+		//conditions for player to move
+		player1.move(joystick, body4, HEIGHT/3, 5*HEIGHT/12, WIDTH/6);
 
 		//change position of player based on body
-		player.setPosition(bodyP.getPosition().x-player.getWidth()/2, bodyP.getPosition().y-player.getHeight()/2);
+		player1.updatePosition();
+
+		//shoot bullets in proper directions
+		player1.clickToShoot(shooterUI, HEIGHT/2, HEIGHT/2);
+
+		//change position of bullets
+		player1.updateBulletPositions();
 
 		//execute batch
 		batch.begin();
 		block.draw(batch); //ground
 		block2.draw(batch); //platform
-		player.draw(batch); //player
+		player1.getPlayerSprite().draw(batch); //player sprite
+		player1.drawAllBullets(batch); //draw all bullets
 		batch.end();
 
 		//move stage for joystick
@@ -317,6 +270,9 @@ public class OwlsGame extends ApplicationAdapter {
 
 		//debug physics boxes/bodies
 		debugRenderer.render(world, debugMatrix);
+
+		//update shooterUI booleans so doesn't continuously shooting
+		shooterUI.resetBooleans();
 
 	}
 
@@ -347,11 +303,6 @@ public class OwlsGame extends ApplicationAdapter {
 		stage.dispose();
 
 	}
-
-
-
-
-
 
 	@Override
 	public void resize(int width, int height) {
