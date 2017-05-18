@@ -5,7 +5,7 @@ import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
-import com.badlogic.gdx.scenes.scene2d.utils.ActorGestureListener;
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 
 public class ShooterUI {
 
@@ -14,6 +14,7 @@ public class ShooterUI {
     public ShooterButtonActor leftButton;
     public ShooterButtonActor rightButton;
     public boolean bottomTouch, topTouch, leftTouch, rightTouch;
+    public ClickListener bottomListener, topListener, leftListener, rightListener;
 
     float commonDistance;
 
@@ -32,51 +33,64 @@ public class ShooterUI {
 
         bottomButton.setX(bottomButtonX); bottomButton.setY(bottomButtonY);
         bottomButton.setWidth(bottomButtonWidth); bottomButton.setHeight(bottomButtonHeight); //make sure it stays in bounds
-        bottomButton.addListener(new ActorGestureListener() {
+        bottomButton.setBounds(bottomButton.getX(), bottomButton.getY(), bottomButton.getWidth(), bottomButton.getHeight());
+
+        bottomListener = new ClickListener() {
             @Override
-            public void tap(InputEvent event, float x, float y, int count, int button) {
+            public void clicked(InputEvent e, float x, float y) {
                 bottomTouch = true;
                 topTouch = false;
                 rightTouch = false;
                 leftTouch = false;
             }
-        });
+        };
+        bottomButton.addListener(bottomListener);
 
         topButton.setX(bottomButton.getX()); topButton.setY(bottomButton.getY()+commonDistance*2);
         topButton.setWidth(bottomButton.getWidth()); topButton.setHeight(bottomButton.getHeight());
-        topButton.addListener(new ActorGestureListener() {
+        topButton.setBounds(topButton.getX(), topButton.getY(), topButton.getWidth(), topButton.getHeight());
+
+        topListener = new ClickListener() {
             @Override
-            public void tap(InputEvent event, float x, float y, int count, int button) {
+            public void clicked(InputEvent e, float x, float y) {
+                bottomTouch = false;
                 topTouch = true;
                 rightTouch = false;
                 leftTouch = false;
-                bottomTouch = false;
             }
-        });
+        };
+        topButton.addListener(topListener);
 
         rightButton.setX(bottomButton.getX()+commonDistance); rightButton.setY(bottomButton.getY()+commonDistance);
         rightButton.setWidth(bottomButton.getWidth()); rightButton.setHeight(bottomButton.getWidth()); //make sure it stays in bounds!
-        rightButton.addListener(new ActorGestureListener() {
+        rightButton.setBounds(rightButton.getX(), rightButton.getY(), rightButton.getWidth(), rightButton.getHeight());
+
+        rightListener = new ClickListener() {
             @Override
-            public void tap(InputEvent event, float x, float y, int count, int button) {
-                rightTouch = true;
-                topTouch = false;
-                leftTouch = false;
+            public void clicked(InputEvent e, float x, float y) {
                 bottomTouch = false;
+                topTouch = false;
+                rightTouch = true;
+                leftTouch = false;
             }
-        });
+        };
+        rightButton.addListener(rightListener);
 
         leftButton.setX(bottomButton.getX()-commonDistance); leftButton.setY(rightButton.getY());
         leftButton.setWidth(bottomButton.getWidth()); leftButton.setHeight(bottomButton.getWidth());
-        leftButton.addListener(new ActorGestureListener() {
+        leftButton.setBounds(leftButton.getX(), leftButton.getY(), leftButton.getWidth(), leftButton.getHeight());
+
+        leftListener = new ClickListener() {
             @Override
-            public void tap(InputEvent event, float x, float y, int count, int button) {
-                leftTouch = true;
-                rightTouch = false;
-                topTouch = false;
+            public void clicked(InputEvent e, float x, float y) {
                 bottomTouch = false;
+                topTouch = false;
+                rightTouch = false;
+                leftTouch = true;
             }
-        });
+        };
+        leftButton.addListener(leftListener);
+
 
     }
 

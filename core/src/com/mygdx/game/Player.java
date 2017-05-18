@@ -134,13 +134,13 @@ public class Player {
 
         //choose direction to shoot in
         if(shootOption==1) { //shoot left
-            bullet.bulletBody.setLinearVelocity(-xVel+playerBody.getLinearVelocity().x, 0);
+            bullet.bulletBody.setLinearVelocity(-xVel, 0);
         } else if(shootOption == 2) { //up
-            bullet.bulletBody.setLinearVelocity(playerBody.getLinearVelocity().x, yVel+playerBody.getLinearVelocity().y);
+            bullet.bulletBody.setLinearVelocity(playerBody.getLinearVelocity().x, yVel);
         } else if(shootOption == 3) { //right
-            bullet.bulletBody.setLinearVelocity(xVel+playerBody.getLinearVelocity().x, 0);
+            bullet.bulletBody.setLinearVelocity(xVel, 0);
         } else if(shootOption == 4) { //down
-            bullet.bulletBody.setLinearVelocity(playerBody.getLinearVelocity().x, -yVel+playerBody.getLinearVelocity().y);
+            bullet.bulletBody.setLinearVelocity(playerBody.getLinearVelocity().x, -yVel);
         }
 
     }
