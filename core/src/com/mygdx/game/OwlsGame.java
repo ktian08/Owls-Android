@@ -83,10 +83,8 @@ public class OwlsGame extends ApplicationAdapter {
 		stage = new Stage(new ScreenViewport());
 
 		stage.addActor(joystick);
-		stage.addActor(shooterUI.topButton);
-		stage.addActor(shooterUI.bottomButton);
-		stage.addActor(shooterUI.leftButton);
-		stage.addActor(shooterUI.rightButton);
+		stage.addActor(shooterUI.topButton); stage.addActor(shooterUI.bottomButton);
+		stage.addActor(shooterUI.leftButton); stage.addActor(shooterUI.rightButton);
 
 		Gdx.input.setInputProcessor(stage);
 
@@ -251,7 +249,7 @@ public class OwlsGame extends ApplicationAdapter {
 		player1.updatePosition();
 
 		//shoot bullets in proper directions
-		player1.clickToShoot(shooterUI, HEIGHT/2, HEIGHT/2);
+		player1.clickToShoot(shooterUI, HEIGHT, HEIGHT);
 
 		//change position of bullets
 		player1.updateBulletPositions();

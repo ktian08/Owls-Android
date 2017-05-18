@@ -136,11 +136,11 @@ public class Player {
         if(shootOption==1) { //shoot left
             bullet.bulletBody.setLinearVelocity(-xVel, 0);
         } else if(shootOption == 2) { //up
-            bullet.bulletBody.setLinearVelocity(playerBody.getLinearVelocity().x, yVel);
+            bullet.bulletBody.setLinearVelocity(0, yVel);
         } else if(shootOption == 3) { //right
             bullet.bulletBody.setLinearVelocity(xVel, 0);
         } else if(shootOption == 4) { //down
-            bullet.bulletBody.setLinearVelocity(playerBody.getLinearVelocity().x, -yVel);
+            bullet.bulletBody.setLinearVelocity(0, -yVel);
         }
 
     }
