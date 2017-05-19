@@ -12,16 +12,12 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
-import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.physics.box2d.Box2DDebugRenderer;
 import com.badlogic.gdx.physics.box2d.Contact;
 import com.badlogic.gdx.physics.box2d.ContactImpulse;
 import com.badlogic.gdx.physics.box2d.ContactListener;
-import com.badlogic.gdx.physics.box2d.EdgeShape;
 import com.badlogic.gdx.physics.box2d.Fixture;
-import com.badlogic.gdx.physics.box2d.FixtureDef;
 import com.badlogic.gdx.physics.box2d.Manifold;
-import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Touchpad;
@@ -35,9 +31,12 @@ public class OwlsGame extends ApplicationAdapter {
 	private World world;
 	private Stage stage;
 
-	private Sprite block, block2, playerSprite;
+	private Platform ground, platform1, platform2, platform3;
+	private Wall wallLeft, wallRight, ceiling;
 	private Player player1;
-	private Body body, body2, body3, body4, body5;
+
+	private Sprite playerSprite;
+	private Body body2, body3, body4;
 	private OrthographicCamera camera;
 	private Box2DDebugRenderer debugRenderer;
 	private Matrix4 debugMatrix;
@@ -45,8 +44,6 @@ public class OwlsGame extends ApplicationAdapter {
 	private static final float WIDTH = 64;
 	private static final float HEIGHT = 36;
 	private static final float GRAVITY = -12.0f;
-	private float heightGround;
-	private float heightPlatform;
 	private ShooterUI shooterUI;
 
 	@Override
@@ -74,7 +71,6 @@ public class OwlsGame extends ApplicationAdapter {
 				, jBackground.getWidth(), jBackground.getWidth()); //joystick is set to screen viewport, so treat as if it's the whole screen not the world
 
 		//create shooter UI
-
 		shooterUI = new ShooterUI(Gdx.graphics.getHeight()/10);
 		shooterUI.configureShooterUI(Gdx.graphics.getWidth()*5/6, Gdx.graphics.getHeight()/10
 				, Gdx.graphics.getHeight()/8, Gdx.graphics.getHeight()/8);
@@ -90,137 +86,27 @@ public class OwlsGame extends ApplicationAdapter {
 
 		//create player1
 		playerSprite = new Sprite(new Texture("whitecircle.png"));
-		player1 = new Player(playerSprite, HEIGHT/10, HEIGHT/10, 0, 0, world);
+		player1 = new Player(playerSprite, HEIGHT/10, HEIGHT/10, 0, -HEIGHT/5, world);
 
-		//create building blocks for all platforms
-		Texture img = new Texture("block.png");
-		block = new Sprite(img); //50x50 pixels
-		block2 = new Sprite(img);
-		img.dispose();
+		//create ground platform
+		ground = new Platform(WIDTH, HEIGHT/10, -WIDTH/2, -HEIGHT/2, world);
 
-		//create ground platform physics box
-		BodyDef bodyDef = new BodyDef();
-		bodyDef.type = BodyDef.BodyType.StaticBody;
-		heightGround = HEIGHT/10; //ground height
-		bodyDef.position.set(0, -HEIGHT/2+heightGround/2);
-
-		FixtureDef fixtureDef = new FixtureDef();
-		PolygonShape ground = new PolygonShape();
-		ground.setAsBox(WIDTH, heightGround/2);
-		fixtureDef.shape = ground;
-
-		body = world.createBody(bodyDef);
-		body.createFixture(fixtureDef);
-
-		ground.dispose(); //dispose of box shape, body already created
-
-		//create ground block
-		block.setSize(WIDTH, heightGround); //block is now width by heightGround
-		block.setPosition(-WIDTH/2, -HEIGHT/2); //set position to bottom left
+		//create platforms
+		platform1 = new Platform(WIDTH/4, HEIGHT/15, -WIDTH/10, -HEIGHT/5, world);
+		platform2 = new Platform(WIDTH/4, HEIGHT/15, -WIDTH/2, 0, world);
+		platform3 = new Platform(WIDTH/4, HEIGHT/15, WIDTH/4, 0, world);
 
 		//create left wall
-		BodyDef bodyDef2 = new BodyDef();
-		bodyDef2.type = BodyDef.BodyType.StaticBody;
-
-		FixtureDef fixtureDef2 = new FixtureDef();
-		EdgeShape wall1 = new EdgeShape();
-		wall1.set(-WIDTH/2, -HEIGHT/2, -WIDTH/2, HEIGHT/2);
-		fixtureDef2.shape = wall1;
-
-		body2 = world.createBody(bodyDef2);
-		body2.createFixture(fixtureDef2);
-
-		wall1.dispose();
+		wallLeft = new Wall(-WIDTH/2, -HEIGHT/2, -WIDTH/2, HEIGHT/2, world);
 
 		//create right wall
-		BodyDef bodyDef3 = new BodyDef();
-		bodyDef3.type = BodyDef.BodyType.StaticBody;
-
-		FixtureDef fixtureDef3 = new FixtureDef();
-		EdgeShape wall2 = new EdgeShape();
-		wall2.set(WIDTH/2, -HEIGHT/2, WIDTH/2, HEIGHT/2);
-		fixtureDef3.shape = wall2;
-
-		body3 = world.createBody(bodyDef3);
-		body3.createFixture(fixtureDef3);
-
-		wall2.dispose();
+		wallRight = new Wall(WIDTH/2, -HEIGHT/2, WIDTH/2, HEIGHT/2, world);
 
 		//create ceiling
-		BodyDef bodyDef4 = new BodyDef();
-		bodyDef4.type = BodyDef.BodyType.StaticBody;
-
-		FixtureDef fixtureDef4 = new FixtureDef();
-		EdgeShape ceiling = new EdgeShape();
-		ceiling.set(-WIDTH/2, HEIGHT/2, WIDTH/2, HEIGHT/2);
-		fixtureDef4.shape = ceiling;
-
-		body4 = world.createBody(bodyDef4);
-		body4.createFixture(fixtureDef4);
-
-		ceiling.dispose();
-
-		//create platform physics box
-		heightPlatform = HEIGHT/10;
-
-		BodyDef bodyDef5 = new BodyDef();
-		bodyDef5.type = BodyDef.BodyType.StaticBody;
-		bodyDef5.position.set(0, -HEIGHT/4+heightPlatform/2);
-
-		FixtureDef fixtureDef5 = new FixtureDef();
-		PolygonShape platform = new PolygonShape();
-
-		platform.setAsBox(WIDTH/8, heightPlatform/2);
-		fixtureDef5.shape = platform;
-
-		body5 = world.createBody(bodyDef5);
-		body5.createFixture(fixtureDef5);
-		body5.setUserData("platform"); //for the world listener
-
-		platform.dispose();
-
-		//create platform block
-		block2.setSize(WIDTH/4, heightPlatform);
-		block2.setPosition(-WIDTH/8, -HEIGHT/4);
+		ceiling = new Wall(-WIDTH/2, HEIGHT/2, WIDTH/2, HEIGHT/2, world);
 
 		//world contact listener, of utmost importance
-		world.setContactListener(new ContactListener() {
-			@Override
-			public void beginContact(Contact contact) {
-				// Check to see if the collision is between the second sprite and the bottom of the screen
-				// If so apply a random amount of upward force to both objects... just because
-
-			}
-
-			@Override
-			public void endContact(Contact contact) {
-			}
-
-			@Override
-			public void preSolve(Contact contact, Manifold oldManifold) {
-				Fixture fixtureA = contact.getFixtureA();
-				Fixture fixtureB = contact.getFixtureB();
-				float platformY = 0;
-				float playerY = 0;
-				if(fixtureA.getBody().getUserData() == "platform" && fixtureB.getBody().getUserData() == "player" //collision between player and platform
-						|| fixtureA.getBody().getUserData() == "player" && fixtureB.getBody().getUserData() == "platform") {
-					if (fixtureA.getBody().getUserData() == "platform") {
-						platformY = fixtureA.getBody().getPosition().y;
-						playerY = fixtureB.getBody().getPosition().y;
-					} else if (fixtureA.getBody().getUserData() == "player") {
-						platformY = fixtureA.getBody().getPosition().y;
-						playerY = fixtureB.getBody().getPosition().y;
-					}
-					if (playerY < (platformY + 100 * player1.getPlayerSprite().getHeight() / 101)) { // the player is below
-						contact.setEnabled(false);
-					}
-				}
-			}
-
-			@Override
-			public void postSolve(Contact contact, ContactImpulse impulse) {
-			}
-		});
+		setOnContactEffects(world);
 
 		//set debug renderer
 		debugRenderer = new Box2DDebugRenderer();
@@ -242,27 +128,28 @@ public class OwlsGame extends ApplicationAdapter {
 		debugMatrix = batch.getProjectionMatrix().cpy();
 
 		//conditions for player to move
-		player1.move(joystick, body4, HEIGHT/3, 5*HEIGHT/12, WIDTH/6);
+		player1.move(joystick, WIDTH/3, 11*HEIGHT/24, WIDTH/6);
 
 		//change position of player based on body
 		player1.updatePosition();
 
 		//shoot bullets in proper directions + add delay
-		player1.timeAfterLastBullet+=1000*Gdx.graphics.getDeltaTime(); //in milliseconds
-		if(player1.timeAfterLastBullet>1000f) {
-			player1.canShoot = true;
-		}
-		player1.clickToShoot(shooterUI, WIDTH/2, HEIGHT); //shoots and updates timeAfterLastBullet, canShoot
+		player1.clickToShoot(shooterUI, WIDTH/2, HEIGHT, 300f);
 
 		//change position of bullets
 		player1.updateBulletPositions();
 
 		//execute batch
 		batch.begin();
-		block.draw(batch); //ground
-		block2.draw(batch); //platform
+
+		ground.getPlatformSprite().draw(batch); //ground
+		platform1.getPlatformSprite().draw(batch); //platform
+		platform2.getPlatformSprite().draw(batch); //platform2
+		platform3.getPlatformSprite().draw(batch); //platform3
+
 		player1.getPlayerSprite().draw(batch); //player sprite
 		player1.drawAllBullets(batch); //draw all bullets
+
 		batch.end();
 
 		//move stage for joystick
@@ -274,6 +161,49 @@ public class OwlsGame extends ApplicationAdapter {
 
 		//update shooterUI booleans so doesn't continuously shooting
 		shooterUI.resetBooleans();
+
+	}
+
+	//set the world contact listener
+	public void setOnContactEffects(World world) {
+		world.setContactListener(new ContactListener() {
+			@Override
+			public void beginContact(Contact contact) {
+			}
+
+			@Override
+			public void endContact(Contact contact) {
+			}
+
+			@Override
+			public void preSolve(Contact contact, Manifold oldManifold) {
+				Fixture fixtureA = contact.getFixtureA();
+				Fixture fixtureB = contact.getFixtureB();
+				float platformY = 0; float playerY = 0; //for first condition
+
+				if((fixtureA.getUserData() instanceof Platform && fixtureB.getUserData() instanceof Player) //collision between player and platform
+						|| (fixtureA.getUserData() instanceof Player && fixtureB.getUserData() instanceof Platform)) {
+					if (fixtureA.getUserData() instanceof Platform) {
+						platformY = fixtureA.getBody().getPosition().y;
+						playerY = fixtureB.getBody().getPosition().y;
+					} else if (fixtureA.getUserData() instanceof Player) {
+						platformY = fixtureA.getBody().getPosition().y;
+						playerY = fixtureB.getBody().getPosition().y;
+					}
+					if (playerY < (platformY + 4 * player1.getPlayerSprite().getHeight() / 5)) { // the player is below
+						contact.setEnabled(false);
+					}
+				}
+				if((fixtureA.getUserData() instanceof Bullet && !(fixtureB.getUserData() instanceof Bullet))
+						|| (fixtureB.getUserData() instanceof Bullet && !(fixtureA.getUserData() instanceof Bullet))) {
+
+				}
+			}
+
+			@Override
+			public void postSolve(Contact contact, ContactImpulse impulse) {
+			}
+		});
 
 	}
 

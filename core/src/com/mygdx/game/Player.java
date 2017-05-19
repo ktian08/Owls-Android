@@ -1,10 +1,12 @@
 package com.mygdx.game;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.physics.box2d.CircleShape;
+import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.physics.box2d.FixtureDef;
 import com.badlogic.gdx.physics.box2d.World;
 
@@ -14,12 +16,12 @@ public class Player {
 
     private Sprite playerSprite;
     private Body playerBody;
+    private Fixture playerFixture;
     public boolean inAir;
     private float velChangeY, impulseY, velChangeX, impulseX;
     public World world;
     public long timeAfterLastBullet = 0;
     public boolean canShoot = true;
-
     public ArrayList<Bullet> bulletList;
 
     public Player(Sprite sprite, float width, float height, float xPos, float yPos, World world) {
@@ -44,6 +46,7 @@ public class Player {
     }
 
     private Body createPlayerBody() {
+
         BodyDef bodyDefP = new BodyDef();
         bodyDefP.type = BodyDef.BodyType.DynamicBody;
         bodyDefP.position.set(playerSprite.getX()+playerSprite.getWidth()/2, playerSprite.getY()+playerSprite.getHeight()/2);
@@ -56,12 +59,13 @@ public class Player {
         fixtureDefP.restitution = 0.05f;
 
         playerBody = world.createBody(bodyDefP);
-        playerBody.createFixture(fixtureDefP);
-        playerBody.setUserData("player"); //for the world listener
+        playerFixture = playerBody.createFixture(fixtureDefP);
+        playerFixture.setUserData(this); //for the world listener
 
         playerCircle.dispose();
 
         return playerBody;
+
     }
 
     public Sprite getPlayerSprite() {
@@ -72,11 +76,12 @@ public class Player {
         return playerBody;
     }
 
-    public void move (Joystick joystick, Body bodyCeiling, float downwardsVelocity, float upwardsVelocity, float sidewaysVelocity) {
+    public void move (Joystick joystick, float downwardsVelocity, float upwardsVelocity, float sidewaysVelocity) {
+
         if(joystick.getKnobPercentY()>0.6 || joystick.getKnobPercentY()<-0.6) { //joystick is in jump range
             if (inAir) {
                 if (joystick.getKnobPercentY() < 0) { //quick fall
-                    velChangeY = -1*downwardsVelocity - getPlayerBody().getLinearVelocity().y;
+                    velChangeY = joystick.getKnobPercentY()*downwardsVelocity - getPlayerBody().getLinearVelocity().y;
                     impulseY = getPlayerBody().getMass() * velChangeY;
                     getPlayerBody().applyLinearImpulse(0, impulseY, getPlayerBody().getPosition().x, getPlayerBody().getPosition().y, true);
                 }
@@ -93,7 +98,7 @@ public class Player {
             }
         } else { //not in jump range
             if(inAir) {
-                if (getPlayerBody().getLinearVelocity().y == 0 && bodyCeiling.getPosition().y - getPlayerBody().getPosition().y > getPlayerSprite().getHeight() / 2) {
+                if (getPlayerBody().getLinearVelocity().y == 0 ) {
                     inAir = false;
                 }
             } else {
@@ -106,6 +111,7 @@ public class Player {
                 }
             }
         }
+
     }
 
     //update position of player sprite
@@ -116,7 +122,12 @@ public class Player {
     }
 
     //click to shoot button
-    public void clickToShoot(ShooterUI shooterUI, float xVel, float yVel) {
+    public void clickToShoot(ShooterUI shooterUI, float xVel, float yVel, float shootDelay) {
+
+        timeAfterLastBullet+=1000* Gdx.graphics.getDeltaTime(); //in milliseconds
+        if(timeAfterLastBullet>shootDelay) {
+            canShoot = true;
+        }
 
         if(canShoot) {
             if (shooterUI.leftTouch) {
@@ -175,6 +186,10 @@ public class Player {
         for(int i = 0; i<bulletList.size(); i++) {
             bulletList.get(i).bulletSprite.draw(batch);
         }
+    }
+
+    public Fixture getPlayerFixture() {
+        return playerFixture;
     }
 
 }
