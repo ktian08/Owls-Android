@@ -14,6 +14,7 @@ public class Bullet {
     public Body bulletBody;
     public Sprite bulletSprite;
     private Fixture bulletFixture;
+    public boolean toBeRemoved = false;
 
     public Bullet(int shootOption, Sprite playerSprite, World world) {
 
@@ -21,15 +22,18 @@ public class Bullet {
         bulletSprite = new Sprite(new Texture("bullet.png"));
         bulletSprite.setSize(playerSprite.getHeight()/4, playerSprite.getHeight()/4); //size sprite
 
+        //needs a small distance between bullet and player so doesn't register as collision
+        float smallDistance = playerSprite.getHeight()/100;
+
         //set initial sprite position
         if(shootOption==1) { //shoot left
-            bulletSprite.setPosition(playerSprite.getX()-bulletSprite.getWidth(), playerSprite.getY()+playerSprite.getHeight()/2-bulletSprite.getHeight()/2);
+            bulletSprite.setPosition(playerSprite.getX()-bulletSprite.getWidth()-smallDistance, playerSprite.getY()+playerSprite.getHeight()/2-bulletSprite.getHeight()/2);
         } else if(shootOption == 2) { //up
-            bulletSprite.setPosition(playerSprite.getX()+playerSprite.getWidth()/2-bulletSprite.getWidth()/2, playerSprite.getY()+playerSprite.getHeight());
+            bulletSprite.setPosition(playerSprite.getX()+playerSprite.getWidth()/2-bulletSprite.getWidth()/2, playerSprite.getY()+playerSprite.getHeight()+smallDistance);
         } else if(shootOption == 3) { //right
-            bulletSprite.setPosition(playerSprite.getX()+playerSprite.getWidth(), playerSprite.getY()+playerSprite.getHeight()/2-bulletSprite.getHeight()/2);
+            bulletSprite.setPosition(playerSprite.getX()+playerSprite.getWidth()+smallDistance, playerSprite.getY()+playerSprite.getHeight()/2-bulletSprite.getHeight()/2);
         } else if(shootOption == 4) { //down
-            bulletSprite.setPosition(playerSprite.getX()+playerSprite.getWidth()/2-bulletSprite.getWidth()/2, playerSprite.getY()-bulletSprite.getHeight()/2);
+            bulletSprite.setPosition(playerSprite.getX()+playerSprite.getWidth()/2-bulletSprite.getWidth()/2, playerSprite.getY()-bulletSprite.getHeight()-smallDistance);
         }
 
         //configure bullet body
@@ -44,7 +48,7 @@ public class Bullet {
 
         bulletBody = world.createBody(bodyDefB);
         bulletFixture = bulletBody.createFixture(fixtureDefB);
-        bulletFixture.setUserData("bullet"); //for world listener
+        bulletFixture.setUserData(this); //for world listener
         bulletBody.setGravityScale(0f); //turn off gravity
 
         bulletCircle.dispose();

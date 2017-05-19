@@ -188,8 +188,5 @@ public class Player {
         }
     }
 
-    public Fixture getPlayerFixture() {
-        return playerFixture;
-    }
 
 }

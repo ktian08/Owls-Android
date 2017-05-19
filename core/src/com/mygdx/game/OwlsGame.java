@@ -17,10 +17,12 @@ import com.badlogic.gdx.physics.box2d.Contact;
 import com.badlogic.gdx.physics.box2d.ContactImpulse;
 import com.badlogic.gdx.physics.box2d.ContactListener;
 import com.badlogic.gdx.physics.box2d.Fixture;
+import com.badlogic.gdx.physics.box2d.JointEdge;
 import com.badlogic.gdx.physics.box2d.Manifold;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Touchpad;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
 import static com.mygdx.game.Joystick.returnTouchpadStyle;
@@ -88,21 +90,15 @@ public class OwlsGame extends ApplicationAdapter {
 		playerSprite = new Sprite(new Texture("whitecircle.png"));
 		player1 = new Player(playerSprite, HEIGHT/10, HEIGHT/10, 0, -HEIGHT/5, world);
 
-		//create ground platform
-		ground = new Platform(WIDTH, HEIGHT/10, -WIDTH/2, -HEIGHT/2, world);
-
 		//create platforms
+		ground = new Platform(WIDTH, HEIGHT/10, -WIDTH/2, -HEIGHT/2, world);
 		platform1 = new Platform(WIDTH/4, HEIGHT/15, -WIDTH/10, -HEIGHT/5, world);
 		platform2 = new Platform(WIDTH/4, HEIGHT/15, -WIDTH/2, 0, world);
 		platform3 = new Platform(WIDTH/4, HEIGHT/15, WIDTH/4, 0, world);
 
-		//create left wall
+		//create walls
 		wallLeft = new Wall(-WIDTH/2, -HEIGHT/2, -WIDTH/2, HEIGHT/2, world);
-
-		//create right wall
 		wallRight = new Wall(WIDTH/2, -HEIGHT/2, WIDTH/2, HEIGHT/2, world);
-
-		//create ceiling
 		ceiling = new Wall(-WIDTH/2, HEIGHT/2, WIDTH/2, HEIGHT/2, world);
 
 		//world contact listener, of utmost importance
@@ -156,6 +152,14 @@ public class OwlsGame extends ApplicationAdapter {
 		stage.act(Gdx.graphics.getDeltaTime());
 		stage.draw();
 
+		//destroy all toBeRemoved bullets
+		for(int i = 0; i<player1.bulletList.size(); i++) {
+			if(player1.bulletList.get(i).toBeRemoved) {
+				removeBodySafely(player1.bulletList.get(i).bulletBody);
+				player1.bulletList.remove(i);
+			}
+		}
+
 		//debug physics boxes/bodies
 		debugRenderer.render(world, debugMatrix);
 
@@ -195,8 +199,12 @@ public class OwlsGame extends ApplicationAdapter {
 					}
 				}
 				if((fixtureA.getUserData() instanceof Bullet && !(fixtureB.getUserData() instanceof Bullet))
-						|| (fixtureB.getUserData() instanceof Bullet && !(fixtureA.getUserData() instanceof Bullet))) {
-
+						|| (fixtureB.getUserData() instanceof Bullet && !(fixtureA.getUserData() instanceof Bullet))) { //collision b/w bullet and something not a bullet
+					if(fixtureA.getUserData() instanceof Bullet) {
+						((Bullet) fixtureA.getUserData()).toBeRemoved = true;
+					} else if(fixtureB.getUserData() instanceof Bullet) {
+						((Bullet) fixtureB.getUserData()).toBeRemoved = true;
+					}
 				}
 			}
 
@@ -205,6 +213,16 @@ public class OwlsGame extends ApplicationAdapter {
 			}
 		});
 
+	}
+
+	//remove body method
+	public void removeBodySafely(Body body) {
+		final Array<JointEdge> list = body.getJointList();
+		while (list.size > 0) {
+			world.destroyJoint(list.get(0).joint);
+		}
+		// actual remove
+		world.destroyBody(body);
 	}
 
 	//return resized texture
