@@ -29,16 +29,17 @@ import static com.mygdx.game.Joystick.returnTouchpadStyle;
 
 public class OwlsGame extends ApplicationAdapter {
 
+	private ServerHandler serverHandler;
+
 	private SpriteBatch batch;
 	private World world;
 	private Stage stage;
 
-	private Platform ground, platform1, platform2, platform3;
-	private Wall wallLeft, wallRight, ceiling;
+	private Platform ground, platform1, platform2, platform3, platform4, platform5;
+	private Wall wallLeft, wallRight, ceiling; //this is necessary
 	private Player player1;
 
 	private Sprite playerSprite;
-	private Body body2, body3, body4;
 	private OrthographicCamera camera;
 	private Box2DDebugRenderer debugRenderer;
 	private Matrix4 debugMatrix;
@@ -50,6 +51,10 @@ public class OwlsGame extends ApplicationAdapter {
 
 	@Override
 	public void create () {
+
+//		//create server handler
+		serverHandler = new ServerHandler();
+		serverHandler.connectSocket();
 
 		//initialize the batch
 		batch = new SpriteBatch();
@@ -88,13 +93,15 @@ public class OwlsGame extends ApplicationAdapter {
 
 		//create player1
 		playerSprite = new Sprite(new Texture("whitecircle.png"));
-		player1 = new Player(playerSprite, HEIGHT/10, HEIGHT/10, 0, -HEIGHT/5, world);
+		player1 = new Player(playerSprite, 3*HEIGHT/40, 3*HEIGHT/40, 0, -HEIGHT/5, world);
 
 		//create platforms
 		ground = new Platform(WIDTH, HEIGHT/10, -WIDTH/2, -HEIGHT/2, world);
-		platform1 = new Platform(WIDTH/4, HEIGHT/15, -WIDTH/10, -HEIGHT/5, world);
-		platform2 = new Platform(WIDTH/4, HEIGHT/15, -WIDTH/2, 0, world);
-		platform3 = new Platform(WIDTH/4, HEIGHT/15, WIDTH/4, 0, world);
+		platform1 = new Platform(WIDTH/5, HEIGHT/30, -WIDTH/5, -31*HEIGHT/120, world);
+		platform2 = new Platform(WIDTH/5, HEIGHT/30, -WIDTH/2, -8*HEIGHT/120, world);
+		platform3 = new Platform(WIDTH/5, HEIGHT/30, -WIDTH/5, 15*HEIGHT/120, world);
+		platform4 = new Platform(WIDTH/5, HEIGHT/30, WIDTH/8, 32*HEIGHT/120, world);
+		platform5 = new Platform(WIDTH/5, HEIGHT/30, WIDTH/4, -8*HEIGHT/120, world);
 
 		//create walls
 		wallLeft = new Wall(-WIDTH/2, -HEIGHT/2, -WIDTH/2, HEIGHT/2, world);
@@ -106,6 +113,7 @@ public class OwlsGame extends ApplicationAdapter {
 
 		//set debug renderer
 		debugRenderer = new Box2DDebugRenderer();
+
 	}
 
 	@Override
@@ -124,7 +132,7 @@ public class OwlsGame extends ApplicationAdapter {
 		debugMatrix = batch.getProjectionMatrix().cpy();
 
 		//conditions for player to move
-		player1.move(joystick, WIDTH/3, 11*HEIGHT/24, WIDTH/6);
+		player1.move(joystick, HEIGHT/2, 5*HEIGHT/12, WIDTH/6);
 
 		//change position of player based on body
 		player1.updatePosition();
@@ -142,6 +150,8 @@ public class OwlsGame extends ApplicationAdapter {
 		platform1.getPlatformSprite().draw(batch); //platform
 		platform2.getPlatformSprite().draw(batch); //platform2
 		platform3.getPlatformSprite().draw(batch); //platform3
+		platform4.getPlatformSprite().draw(batch); //platform4
+		platform5.getPlatformSprite().draw(batch); //platform5
 
 		player1.getPlayerSprite().draw(batch); //player sprite
 		player1.drawAllBullets(batch); //draw all bullets
@@ -194,7 +204,7 @@ public class OwlsGame extends ApplicationAdapter {
 						platformY = fixtureA.getBody().getPosition().y;
 						playerY = fixtureB.getBody().getPosition().y;
 					}
-					if (playerY < (platformY + 4 * player1.getPlayerSprite().getHeight() / 5)) { // the player is below
+					if (playerY < (platformY + 4 * player1.getPlayerSprite().getHeight() / 6)) { // the player is below
 						contact.setEnabled(false);
 					}
 				}

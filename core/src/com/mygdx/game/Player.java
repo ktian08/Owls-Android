@@ -42,7 +42,6 @@ public class Player {
             inAir = false;
         }
 
-
     }
 
     private Body createPlayerBody() {
@@ -56,7 +55,7 @@ public class Player {
         playerCircle.setRadius(playerSprite.getWidth()/2);
         fixtureDefP.shape = playerCircle;
         fixtureDefP.density = 4f;
-        fixtureDefP.restitution = 0.05f;
+        fixtureDefP.restitution = 0.01f;
 
         playerBody = world.createBody(bodyDefP);
         playerFixture = playerBody.createFixture(fixtureDefP);
@@ -78,14 +77,13 @@ public class Player {
 
     public void move (Joystick joystick, float downwardsVelocity, float upwardsVelocity, float sidewaysVelocity) {
 
-        if(joystick.getKnobPercentY()>0.6 || joystick.getKnobPercentY()<-0.6) { //joystick is in jump range
+        if(joystick.getKnobPercentY()>0.5 || joystick.getKnobPercentY()<-0.5) { //joystick is in jump range
             if (inAir) {
                 if (joystick.getKnobPercentY() < 0) { //quick fall
-                    velChangeY = joystick.getKnobPercentY()*downwardsVelocity - getPlayerBody().getLinearVelocity().y;
-                    impulseY = getPlayerBody().getMass() * velChangeY;
+                    velChangeY = -downwardsVelocity - getPlayerBody().getLinearVelocity().y;
+                    impulseY = getPlayerBody().getMass() * velChangeY * 1.5f;
                     getPlayerBody().applyLinearImpulse(0, impulseY, getPlayerBody().getPosition().x, getPlayerBody().getPosition().y, true);
                 }
-
                 if (getPlayerBody().getLinearVelocity().y == 0f) {
                     inAir = false;
                 }
@@ -98,7 +96,7 @@ public class Player {
             }
         } else { //not in jump range
             if(inAir) {
-                if (getPlayerBody().getLinearVelocity().y == 0 ) {
+                if (getPlayerBody().getLinearVelocity().y == 0f) {
                     inAir = false;
                 }
             } else {
