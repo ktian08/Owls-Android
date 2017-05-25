@@ -25,11 +25,21 @@ import com.badlogic.gdx.scenes.scene2d.ui.Touchpad;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.HashMap;
+
+import io.socket.client.IO;
+import io.socket.client.Socket;
+import io.socket.emitter.Emitter;
+
 import static com.mygdx.game.Joystick.returnTouchpadStyle;
 
 public class OwlsGame extends ApplicationAdapter {
 
-	private ServerHandler serverHandler;
+	private Socket socket;
 
 	private SpriteBatch batch;
 	private World world;
@@ -37,9 +47,11 @@ public class OwlsGame extends ApplicationAdapter {
 
 	private Platform ground, platform1, platform2, platform3, platform4, platform5;
 	private Wall wallLeft, wallRight, ceiling; //this is necessary
-	private Player player1;
 
-	private Sprite playerSprite;
+	private Player player1;
+	private HashMap<String, Player> oppPlayers;
+
+	private Sprite playerSprite, playerSprite2, oppPlayerSprite;
 	private OrthographicCamera camera;
 	private Box2DDebugRenderer debugRenderer;
 	private Matrix4 debugMatrix;
@@ -49,12 +61,10 @@ public class OwlsGame extends ApplicationAdapter {
 	private static final float GRAVITY = -12.0f;
 	private ShooterUI shooterUI;
 
+
+
 	@Override
 	public void create () {
-
-//		//create server handler
-		serverHandler = new ServerHandler();
-		serverHandler.connectSocket();
 
 		//initialize the batch
 		batch = new SpriteBatch();
@@ -91,9 +101,12 @@ public class OwlsGame extends ApplicationAdapter {
 
 		Gdx.input.setInputProcessor(stage);
 
-		//create player1
+		//create your player
 		playerSprite = new Sprite(new Texture("whitecircle.png"));
+		playerSprite2 = new Sprite(new Texture("whitecircle.png"));
+		oppPlayerSprite = new Sprite(new Texture("whitecircle.png"));
 		player1 = new Player(playerSprite, 3*HEIGHT/40, 3*HEIGHT/40, 0, -HEIGHT/5, world);
+		oppPlayers = new HashMap<String, Player>();
 
 		//create platforms
 		ground = new Platform(WIDTH, HEIGHT/10, -WIDTH/2, -HEIGHT/2, world);
@@ -114,6 +127,80 @@ public class OwlsGame extends ApplicationAdapter {
 		//set debug renderer
 		debugRenderer = new Box2DDebugRenderer();
 
+		//server stuff, should be at end of create
+		connectSocket();
+		configSocketEvents();
+
+	}
+
+	//server stuff
+	public void connectSocket() { //connect to socket (client side)
+		try {
+			socket = IO.socket("http://192.168.1.107:8080");
+			socket.connect();
+		} catch (Exception e) {
+			System.out.println(e);
+		}
+	}
+
+	public void configSocketEvents() { //client side server stuff
+
+		socket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
+			@Override
+			public void call(Object... args) {
+				Gdx.app.log("SocketIO", "Connected");
+			}
+		}).on("socketID", new Emitter.Listener() {
+			@Override
+			public void call(Object... args) {
+				JSONObject data = (JSONObject) args[0];
+				try{
+					String id = data.getString("id");
+					Gdx.app.log("SocketIO", "My id: "+ id);
+				} catch(JSONException e) {
+					Gdx.app.log("SocketIO", "Problem retrieving JSON");
+				}
+			}
+		}).on("newPlayer", new Emitter.Listener() {
+			@Override
+			public void call(Object... args) { //i artificially limit to one new player aka 1v1 me irl
+				JSONObject data = (JSONObject) args[0];
+				try{
+					String id = data.getString("id");
+					oppPlayers.put(id, new Player(oppPlayerSprite, 3*HEIGHT/40, 3*HEIGHT/40, 0, 0, world));
+					Gdx.app.log("SocketIO", "New Player Connected: "+ id);
+				} catch(JSONException e) {
+					Gdx.app.log("SocketIO", "Problem retrieving JSON");
+				}
+			}
+		}).on("playerDisconnected", new Emitter.Listener() {
+			@Override
+			public void call(Object... args) {
+				JSONObject data = (JSONObject) args[0];
+				try{
+					String id = data.getString("id");
+					oppPlayers.remove(id);
+				} catch(JSONException e) {
+					Gdx.app.log("SocketIO", "Error getting disconnected");
+				}
+			}
+		}).on("getPlayers", new Emitter.Listener() {
+			@Override
+			public void call(Object... args) {
+				JSONArray objects = (JSONArray) args[0];
+				try{
+					for(int i = 0; i<objects.length(); i++) {
+						Player existingPlayer = new Player(playerSprite2, 3*HEIGHT/40, 3*HEIGHT/40, 0, 0, world);
+						float posX = ((Double)objects.getJSONObject(i).getDouble("x")).floatValue();
+						float posY = ((Double)objects.getJSONObject(i).getDouble("y")).floatValue();
+						existingPlayer.getPlayerSprite().setPosition(posX, posY);
+						oppPlayers.put(objects.getJSONObject(i).getString("id"), existingPlayer);
+					}
+				} catch(JSONException e) {
+					Gdx.app.log("SocketIO", "Error getting player IDs");
+				}
+			}
+		});
 	}
 
 	@Override
@@ -131,11 +218,11 @@ public class OwlsGame extends ApplicationAdapter {
 		batch.setProjectionMatrix(camera.combined);
 		debugMatrix = batch.getProjectionMatrix().cpy();
 
-		//conditions for player to move
+		//move player
 		player1.move(joystick, HEIGHT/2, 5*HEIGHT/12, WIDTH/6);
 
-		//change position of player based on body
-		player1.updatePosition();
+		//update position of player sprite
+		player1.updatePlayerPos();
 
 		//shoot bullets in proper directions + add delay
 		player1.clickToShoot(shooterUI, WIDTH/2, HEIGHT, 300f);
@@ -153,8 +240,17 @@ public class OwlsGame extends ApplicationAdapter {
 		platform4.getPlatformSprite().draw(batch); //platform4
 		platform5.getPlatformSprite().draw(batch); //platform5
 
-		player1.getPlayerSprite().draw(batch); //player sprite
-		player1.drawAllBullets(batch); //draw all bullets
+		//draw player
+		player1.getPlayerSprite().draw(batch);
+
+		//draw all bullets from player1
+		player1.drawAllBullets(batch);
+
+		//update opposing players from server hashmap
+		for(HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
+			entry.getValue().getPlayerSprite().draw(batch); //draw player sprite
+			entry.getValue().updatePlayerPos(); //update position
+		}
 
 		batch.end();
 
@@ -252,6 +348,8 @@ public class OwlsGame extends ApplicationAdapter {
 		return texture;
 
 	}
+
+
 
 	@Override
 	public void dispose () {

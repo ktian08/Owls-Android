@@ -112,11 +112,9 @@ public class Player {
 
     }
 
-    //update position of player sprite
-    public void updatePosition() {
-
+    //update position
+    public void updatePlayerPos() {
         playerSprite.setPosition(playerBody.getPosition().x-playerSprite.getWidth()/2, playerBody.getPosition().y-playerSprite.getHeight()/2);
-
     }
 
     //click to shoot button
