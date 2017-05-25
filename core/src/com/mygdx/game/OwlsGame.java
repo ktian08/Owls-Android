@@ -143,7 +143,7 @@ public class OwlsGame extends ApplicationAdapter {
 		}
 	}
 
-	public void configSocketEvents() { //client side server stuff
+	public void configSocketEvents() { //client side server stuff, as important as (and similar to) world listener
 
 		socket.on(Socket.EVENT_CONNECT, new Emitter.Listener() {
 			@Override
@@ -179,6 +179,7 @@ public class OwlsGame extends ApplicationAdapter {
 				JSONObject data = (JSONObject) args[0];
 				try{
 					String id = data.getString("id");
+					removeBodySafely(oppPlayers.get(id).getPlayerBody());
 					oppPlayers.remove(id);
 				} catch(JSONException e) {
 					Gdx.app.log("SocketIO", "Error getting disconnected");
