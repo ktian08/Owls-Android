@@ -23,6 +23,7 @@ public class Player {
     public long timeAfterLastBullet = 0;
     public boolean canShoot = true;
     public ArrayList<Bullet> bulletList;
+    public boolean hasMoved = false;
 
     public Player(Sprite sprite, float width, float height, float xPos, float yPos, World world) {
 
@@ -109,6 +110,8 @@ public class Player {
                 }
             }
         }
+
+        hasMoved = true;
 
     }
 

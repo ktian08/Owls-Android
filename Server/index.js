@@ -24,6 +24,8 @@ io.on('connection', function(socket) {
 
         for(var i = 0; i<players.length; i++) {
             if(players[i].id==data.id) {
+                players[i].vx = data.vx;
+                players[i].vy = data.vy;
                 players[i].x = data.x;
                 players[i].y = data.y;
             }
@@ -43,12 +45,14 @@ io.on('connection', function(socket) {
 
 	});
 
-	players.push(new player(socket.id, 0, 0)); //add to newly joined client
+	players.push(new player(socket.id, 0, 0, 0, 0)); //add to newly joined client
 
 });
 
-function player(id, x, y) {
+function player(id, vx, vy, x, y) {
     this.id = id;
+    this.vx = vx;
+    this.vy = vy;
     this.x = x;
     this.y = y;
 }

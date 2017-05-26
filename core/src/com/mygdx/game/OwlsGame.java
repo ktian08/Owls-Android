@@ -40,6 +40,8 @@ import static com.mygdx.game.Joystick.returnTouchpadStyle;
 public class OwlsGame extends ApplicationAdapter {
 
 	private Socket socket;
+	private float timer = 0f;
+	private float updateTime = 1/60f;
 
 	private SpriteBatch batch;
 	private World world;
@@ -213,10 +215,13 @@ public class OwlsGame extends ApplicationAdapter {
 				JSONObject data = (JSONObject) args[0];
 				try{
 					String id = data.getString("id");
+					double vx = data.getDouble("vx");
+					double vy = data.getDouble("vy");
 					double x = data.getDouble("x");
 					double y = data.getDouble("y");
 					if(!oppPlayers.isEmpty()) {
 						oppPlayers.get(id).getPlayerBody().setTransform((float)x, (float)y, 0);
+						oppPlayers.get(id).getPlayerBody().setLinearVelocity((float)vx, (float)vy);
 					}
 				} catch(JSONException e) {
 					Gdx.app.log("SocketIO", "Error updating player position");
@@ -225,16 +230,24 @@ public class OwlsGame extends ApplicationAdapter {
 		});
 	}
 
-	public void updatePositionOnOppScreen() {
-		JSONObject data = new JSONObject();
-		try {
+	public void updatePositionOnOppScreen(float dt) {
 
-			data.put("x", player1.getPlayerBody().getPosition().x);
-			data.put("y", player1.getPlayerBody().getPosition().y);
-			socket.emit("playerMoved", data);
-		} catch(JSONException e) {
-			Gdx.app.log("Socket.io", "Messed up JSON update");
+		timer+=dt;
+		if (timer > updateTime && player1.hasMoved) {
+			JSONObject data = new JSONObject();
+			try {
+				data.put("vx", player1.getPlayerBody().getLinearVelocity().x);
+				data.put("vy", player1.getPlayerBody().getLinearVelocity().y);
+				data.put("x", player1.getPlayerBody().getPosition().x);
+				data.put("y", player1.getPlayerBody().getPosition().y);
+				socket.emit("playerMoved", data);
+			} catch(JSONException e) {
+				Gdx.app.log("Socket.io", "Messed up JSON update");
+			}
+			timer = 0;
+			player1.hasMoved = false;
 		}
+
 	}
 
 	@Override
@@ -259,7 +272,7 @@ public class OwlsGame extends ApplicationAdapter {
 		player1.updatePlayerPos();
 
 		//update your player on opponent's screen
-		updatePositionOnOppScreen();
+		updatePositionOnOppScreen(Gdx.graphics.getDeltaTime());
 
 		//shoot bullets in proper directions + add delay
 		player1.clickToShoot(shooterUI, bulletSideVel, bulletUpDownVel, 300f);
@@ -285,6 +298,7 @@ public class OwlsGame extends ApplicationAdapter {
 
 		//update opposing players from server hashmap
 		for(HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
+			entry.getValue().getPlayerBody().setGravityScale(0f);
 			entry.getValue().getPlayerSprite().draw(batch); //draw player sprite
 			entry.getValue().updatePlayerPos(); //update position
 		}
