@@ -41,7 +41,7 @@ public class OwlsGame extends ApplicationAdapter {
 
 	private Socket socket;
 	private float timer = 0f;
-	private float updateTime = 1/60f;
+	private float updateTime = 0.100f;
 
 	private SpriteBatch batch;
 	private World world;
@@ -232,12 +232,16 @@ public class OwlsGame extends ApplicationAdapter {
 
 	public void updatePositionOnOppScreen(float dt) {
 
+		JSONObject data = new JSONObject();
+		try {
+			data.put("vx", player1.getPlayerBody().getLinearVelocity().x);
+			data.put("vy", player1.getPlayerBody().getLinearVelocity().y);
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
 		timer+=dt;
 		if (timer > updateTime && player1.hasMoved) {
-			JSONObject data = new JSONObject();
 			try {
-				data.put("vx", player1.getPlayerBody().getLinearVelocity().x);
-				data.put("vy", player1.getPlayerBody().getLinearVelocity().y);
 				data.put("x", player1.getPlayerBody().getPosition().x);
 				data.put("y", player1.getPlayerBody().getPosition().y);
 				socket.emit("playerMoved", data);
