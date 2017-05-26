@@ -112,6 +112,40 @@ public class Player {
 
     }
 
+//    public float getImpulseX(Joystick joystick, float sidewaysVelocity) {
+//
+//        if(!(joystick.getKnobPercentY()>0.5 || joystick.getKnobPercentY()<-0.5)) {
+//            if(!inAir) {
+//                velChangeX = joystick.getKnobPercentX()*sidewaysVelocity - getPlayerBody().getLinearVelocity().x;
+//                impulseX = getPlayerBody().getMass()*velChangeX;
+//                return impulseX;
+//            }
+//        }
+//
+//        return 0f;
+//
+//    }
+//
+//    public float getImpulseY(Joystick joystick, float downwardsVelocity, float upwardsVelocity) {
+//
+//        if(joystick.getKnobPercentY()>0.5 || joystick.getKnobPercentY()<-0.5) { //joystick is in jump range
+//            if (inAir) {
+//                if (joystick.getKnobPercentY() < 0) { //quick fall
+//                    velChangeY = -downwardsVelocity - getPlayerBody().getLinearVelocity().y;
+//                    impulseY = getPlayerBody().getMass() * velChangeY * 1.5f;
+//                    return impulseY;
+//                }
+//            } else {
+//                velChangeY = upwardsVelocity - getPlayerBody().getLinearVelocity().y;
+//                impulseY = getPlayerBody().getMass() * velChangeY;
+//                return impulseY;
+//            }
+//        }
+//
+//        return 0f;
+//
+//    }
+
     //update position
     public void updatePlayerPos() {
         playerSprite.setPosition(playerBody.getPosition().x-playerSprite.getWidth()/2, playerBody.getPosition().y-playerSprite.getHeight()/2);

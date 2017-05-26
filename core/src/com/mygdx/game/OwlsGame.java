@@ -59,6 +59,11 @@ public class OwlsGame extends ApplicationAdapter {
 	private static final float WIDTH = 64;
 	private static final float HEIGHT = 36;
 	private static final float GRAVITY = -12.0f;
+	private float sidewaysVelocity = WIDTH/6;
+	private float upwardsVelocity = HEIGHT/2;
+	private float downwardsVelocity = HEIGHT*5/12;
+	private float bulletSideVel = WIDTH/2;
+	private float bulletUpDownVel = HEIGHT;
 	private ShooterUI shooterUI;
 
 
@@ -105,6 +110,7 @@ public class OwlsGame extends ApplicationAdapter {
 		playerSprite = new Sprite(new Texture("whitecircle.png"));
 		playerSprite2 = new Sprite(new Texture("whitecircle.png"));
 		oppPlayerSprite = new Sprite(new Texture("whitecircle.png"));
+
 		player1 = new Player(playerSprite, 3*HEIGHT/40, 3*HEIGHT/40, 0, -HEIGHT/5, world);
 		oppPlayers = new HashMap<String, Player>();
 
@@ -201,7 +207,34 @@ public class OwlsGame extends ApplicationAdapter {
 					Gdx.app.log("SocketIO", "Error getting player IDs");
 				}
 			}
+		}).on("playerMoved", new Emitter.Listener() {
+			@Override
+			public void call(Object... args) {
+				JSONObject data = (JSONObject) args[0];
+				try{
+					String id = data.getString("id");
+					double x = data.getDouble("x");
+					double y = data.getDouble("y");
+					if(!oppPlayers.isEmpty()) {
+						oppPlayers.get(id).getPlayerBody().setTransform((float)x, (float)y, 0);
+					}
+				} catch(JSONException e) {
+					Gdx.app.log("SocketIO", "Error updating player position");
+				}
+			}
 		});
+	}
+
+	public void updatePositionOnOppScreen() {
+		JSONObject data = new JSONObject();
+		try {
+
+			data.put("x", player1.getPlayerBody().getPosition().x);
+			data.put("y", player1.getPlayerBody().getPosition().y);
+			socket.emit("playerMoved", data);
+		} catch(JSONException e) {
+			Gdx.app.log("Socket.io", "Messed up JSON update");
+		}
 	}
 
 	@Override
@@ -218,15 +251,18 @@ public class OwlsGame extends ApplicationAdapter {
 		//change batch to perspective of camera
 		batch.setProjectionMatrix(camera.combined);
 		debugMatrix = batch.getProjectionMatrix().cpy();
-
+//
 		//move player
-		player1.move(joystick, HEIGHT/2, 5*HEIGHT/12, WIDTH/6);
+		player1.move(joystick, upwardsVelocity, downwardsVelocity, sidewaysVelocity);
 
 		//update position of player sprite
 		player1.updatePlayerPos();
 
+		//update your player on opponent's screen
+		updatePositionOnOppScreen();
+
 		//shoot bullets in proper directions + add delay
-		player1.clickToShoot(shooterUI, WIDTH/2, HEIGHT, 300f);
+		player1.clickToShoot(shooterUI, bulletSideVel, bulletUpDownVel, 300f);
 
 		//change position of bullets
 		player1.updateBulletPositions();
