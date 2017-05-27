@@ -58,6 +58,8 @@ public class OwlsGame extends ApplicationAdapter {
 	private Player player1;
 	private HashMap<String, Player> oppPlayers;
 	private HashMap<String, Bullet> oppBullets;
+	private float timerB = 0f;
+	private float updateTimeB = 0.100f;
 
 	private Sprite playerSprite, playerSprite2, oppPlayerSprite;
 	private OrthographicCamera camera;
@@ -297,7 +299,8 @@ public class OwlsGame extends ApplicationAdapter {
 	public void updateBulletPosOnOppScreen(float dt) {
 
 		JSONObject data = new JSONObject();
-		if(player1.hasShot) {
+		timerB+=dt;
+		if(timerB > updateTimeB && player1.hasShot) {
 			try{
 				Bullet bullet = player1.bulletList.get(player1.bulletList.size()-1);
 				data.put("vx", bullet.getVx());
@@ -309,6 +312,7 @@ public class OwlsGame extends ApplicationAdapter {
 				e.printStackTrace();
 			}
 			player1.hasShot = false;
+			timerB = 0;
 		}
 
 	}
