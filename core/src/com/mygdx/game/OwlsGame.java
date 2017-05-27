@@ -43,6 +43,11 @@ public class OwlsGame extends ApplicationAdapter {
 	private float timer = 0f;
 	private float updateTime = 0.100f;
 
+//	private float timerL = 0;
+//	private float updateTimeL = 2f;
+//	private float startTime = 0;
+//	private float latency = 0;
+
 	private SpriteBatch batch;
 	private World world;
 	private Stage stage;
@@ -52,6 +57,7 @@ public class OwlsGame extends ApplicationAdapter {
 
 	private Player player1;
 	private HashMap<String, Player> oppPlayers;
+	private HashMap<String, Bullet> oppBullets;
 
 	private Sprite playerSprite, playerSprite2, oppPlayerSprite;
 	private OrthographicCamera camera;
@@ -67,7 +73,6 @@ public class OwlsGame extends ApplicationAdapter {
 	private float bulletSideVel = WIDTH/2;
 	private float bulletUpDownVel = HEIGHT;
 	private ShooterUI shooterUI;
-
 
 
 	@Override
@@ -115,6 +120,7 @@ public class OwlsGame extends ApplicationAdapter {
 
 		player1 = new Player(playerSprite, 3*HEIGHT/40, 3*HEIGHT/40, 0, -HEIGHT/5, world);
 		oppPlayers = new HashMap<String, Player>();
+		oppBullets = new HashMap<String, Bullet>();
 
 		//create platforms
 		ground = new Platform(WIDTH, HEIGHT/10, -WIDTH/2, -HEIGHT/2, world);
@@ -140,6 +146,12 @@ public class OwlsGame extends ApplicationAdapter {
 		configSocketEvents();
 
 	}
+
+//	//update latency
+//	public void updateLatency() {
+//		startTime = System.currentTimeMillis();
+//		socket.emit("ping");
+//	}
 
 	//server stuff
 	public void connectSocket() { //connect to socket (client side)
@@ -227,6 +239,34 @@ public class OwlsGame extends ApplicationAdapter {
 					Gdx.app.log("SocketIO", "Error updating player position");
 				}
 			}
+		})
+//				.on("pong", new Emitter.Listener() {
+//			@Override
+//			public void call(Object... args) {
+//				latency = System.currentTimeMillis() - startTime;
+//				Gdx.app.log("latency", latency+", "+ startTime);
+//			}
+		.on("playerShot", new Emitter.Listener() {
+			@Override
+			public void call(Object... args) {
+				JSONObject data = (JSONObject) args[0];
+				try {
+					double vx = data.getDouble("vx");
+					double vy = data.getDouble("vy");
+					double x = data.getDouble("x");
+					double y = data.getDouble("y");
+
+					Bullet newBullet = new Bullet((float)x, (float)y, playerSprite, world);
+					newBullet.setVx((float)vx); newBullet.setVy((float)vy); newBullet.setX((float)x); newBullet.setY((float)y);
+
+					for(HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
+						entry.getValue().bulletList.add(newBullet);
+					}
+
+				} catch (JSONException e) {
+					Gdx.app.log("SocketIO", "Error updating bullet position");
+				}
+			}
 		});
 	}
 
@@ -240,7 +280,7 @@ public class OwlsGame extends ApplicationAdapter {
 			e.printStackTrace();
 		}
 		timer+=dt;
-		if (timer > updateTime && player1.hasMoved) {
+		if (timer > updateTime && player1.hasMoved && player1!=null)  {
 			try {
 				data.put("x", player1.getPlayerBody().getPosition().x);
 				data.put("y", player1.getPlayerBody().getPosition().y);
@@ -250,6 +290,25 @@ public class OwlsGame extends ApplicationAdapter {
 			}
 			timer = 0;
 			player1.hasMoved = false;
+		}
+
+	}
+
+	public void updateBulletPosOnOppScreen(float dt) {
+
+		JSONObject data = new JSONObject();
+		if(player1.hasShot) {
+			try{
+				Bullet bullet = player1.bulletList.get(player1.bulletList.size()-1);
+				data.put("vx", bullet.getVx());
+				data.put("vy", bullet.getVy());
+				data.put("x", bullet.getX());
+				data.put("y", bullet.getY());
+				socket.emit("playerShot", data);
+			} catch (JSONException e) {
+				e.printStackTrace();
+			}
+			player1.hasShot = false;
 		}
 
 	}
@@ -268,7 +327,13 @@ public class OwlsGame extends ApplicationAdapter {
 		//change batch to perspective of camera
 		batch.setProjectionMatrix(camera.combined);
 		debugMatrix = batch.getProjectionMatrix().cpy();
-//
+
+		//timer for latency
+//		timerL+=Gdx.graphics.getDeltaTime();
+//		if(timerL>updateTimeL) {
+//			updateLatency();
+//		}
+
 		//move player
 		player1.move(joystick, upwardsVelocity, downwardsVelocity, sidewaysVelocity);
 
@@ -283,6 +348,9 @@ public class OwlsGame extends ApplicationAdapter {
 
 		//change position of bullets
 		player1.updateBulletPositions();
+
+		//update bullets on opposing screen
+		updateBulletPosOnOppScreen(Gdx.graphics.getDeltaTime());
 
 		//execute batch
 		batch.begin();
@@ -302,9 +370,14 @@ public class OwlsGame extends ApplicationAdapter {
 
 		//update opposing players from server hashmap
 		for(HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
+
 			entry.getValue().getPlayerBody().setGravityScale(0f);
 			entry.getValue().getPlayerSprite().draw(batch); //draw player sprite
 			entry.getValue().updatePlayerPos(); //update position
+
+			entry.getValue().drawAllBullets(batch); //draw bullet sprites
+			entry.getValue().updateBulletPositions(); //update bullet positions
+
 		}
 
 		batch.end();
@@ -313,11 +386,21 @@ public class OwlsGame extends ApplicationAdapter {
 		stage.act(Gdx.graphics.getDeltaTime());
 		stage.draw();
 
-		//destroy all toBeRemoved bullets
+		//destroy all toBeRemoved bullets for your player
 		for(int i = 0; i<player1.bulletList.size(); i++) {
 			if(player1.bulletList.get(i).toBeRemoved) {
 				removeBodySafely(player1.bulletList.get(i).bulletBody);
 				player1.bulletList.remove(i);
+			}
+		}
+
+		//destroy all toBeRemoved bullets for your player
+		for(HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
+			for(int i = 0; i<entry.getValue().bulletList.size(); i++) {
+				if(entry.getValue().bulletList.get(i).toBeRemoved) {
+					removeBodySafely(entry.getValue().bulletList.get(i).bulletBody);
+					entry.getValue().bulletList.remove(i);
+				}
 			}
 		}
 

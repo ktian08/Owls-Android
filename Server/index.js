@@ -32,6 +32,15 @@ io.on('connection', function(socket) {
         }
 	});
 
+	socket.on('playerShot', function(data) {
+         data.id = socket.id;
+         socket.broadcast.emit('playerShot', data);
+	});
+
+//	socket.on('ping', function() {
+//        socket.emit('pong');
+//    });
+
 	socket.on('disconnect', function() {
 
 		console.log("Player disconnected...");
@@ -56,3 +65,4 @@ function player(id, vx, vy, x, y) {
     this.x = x;
     this.y = y;
 }
+

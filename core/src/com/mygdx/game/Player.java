@@ -24,6 +24,7 @@ public class Player {
     public boolean canShoot = true;
     public ArrayList<Bullet> bulletList;
     public boolean hasMoved = false;
+    public boolean hasShot = false;
 
     public Player(Sprite sprite, float width, float height, float xPos, float yPos, World world) {
 
@@ -167,18 +168,22 @@ public class Player {
                 shoot(1, xVel, yVel);
                 canShoot = false;
                 timeAfterLastBullet = 0;
+                hasShot = true;
             } else if (shooterUI.topTouch) {
                 shoot(2, xVel, yVel);
                 canShoot = false;
                 timeAfterLastBullet = 0;
+                hasShot = true;
             } else if (shooterUI.rightTouch) {
                 shoot(3, xVel, yVel);
                 canShoot = false;
                 timeAfterLastBullet = 0;
+                hasShot = true;
             } else if (shooterUI.bottomTouch) {
                 shoot(4, xVel, yVel);
                 canShoot = false;
                 timeAfterLastBullet = 0;
+                hasShot = true;
             }
         }
 
@@ -193,12 +198,20 @@ public class Player {
 
         //choose direction to shoot in
         if(shootOption==1) { //shoot left
+            bullet.setVx(-xVel);
+            bullet.setVy(0);
             bullet.bulletBody.setLinearVelocity(-xVel, 0);
         } else if(shootOption == 2) { //up
+            bullet.setVx(0);
+            bullet.setVy(yVel);
             bullet.bulletBody.setLinearVelocity(0, yVel);
         } else if(shootOption == 3) { //right
+            bullet.setVx(xVel);
+            bullet.setVy(0);
             bullet.bulletBody.setLinearVelocity(xVel, 0);
         } else if(shootOption == 4) { //down
+            bullet.setVx(0);
+            bullet.setVy(-yVel);
             bullet.bulletBody.setLinearVelocity(0, -yVel);
         }
 
