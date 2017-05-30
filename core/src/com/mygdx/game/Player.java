@@ -94,7 +94,7 @@ public class Player {
                 impulseY = getPlayerBody().getMass() * velChangeY;
                 getPlayerBody().applyLinearImpulse(0, impulseY, getPlayerBody().getPosition().x, getPlayerBody().getPosition().y, true);
 
-               inAir = true;
+                inAir = true;
             }
         } else { //not in jump range
             if(inAir) {

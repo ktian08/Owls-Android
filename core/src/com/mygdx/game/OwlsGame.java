@@ -248,28 +248,29 @@ public class OwlsGame extends ApplicationAdapter {
 //				latency = System.currentTimeMillis() - startTime;
 //				Gdx.app.log("latency", latency+", "+ startTime);
 //			}
-		.on("playerShot", new Emitter.Listener() {
-			@Override
-			public void call(Object... args) {
-				JSONObject data = (JSONObject) args[0];
-				try {
-					double vx = data.getDouble("vx");
-					double vy = data.getDouble("vy");
-					double x = data.getDouble("x");
-					double y = data.getDouble("y");
+				.on("playerShot", new Emitter.Listener() {
+					@Override
+					public void call(Object... args) {
+						JSONObject data = (JSONObject) args[0];
+						try {
+							String id = data.getString("id");
+							double vx = data.getDouble("vx");
+							double vy = data.getDouble("vy");
+							double x = data.getDouble("x");
+							double y = data.getDouble("y");
+							int shootOption = data.getInt("shootOption");
+							Bullet newBullet = new Bullet(shootOption, oppPlayers.get(id).getPlayerSprite(), world);
+							newBullet.setVx((float)vx); newBullet.setVy((float)vy); newBullet.setX((float)x); newBullet.setY((float)y);
 
-					Bullet newBullet = new Bullet((float)x, (float)y, playerSprite, world);
-					newBullet.setVx((float)vx); newBullet.setVy((float)vy); newBullet.setX((float)x); newBullet.setY((float)y);
+							for(HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
+								entry.getValue().bulletList.add(newBullet);
+							}
 
-					for(HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
-						entry.getValue().bulletList.add(newBullet);
+						} catch (JSONException e) {
+							Gdx.app.log("SocketIO", "Error updating bullet position");
+						}
 					}
-
-				} catch (JSONException e) {
-					Gdx.app.log("SocketIO", "Error updating bullet position");
-				}
-			}
-		});
+				});
 	}
 
 	public void updatePositionOnOppScreen(float dt) {
@@ -307,6 +308,7 @@ public class OwlsGame extends ApplicationAdapter {
 				data.put("vy", bullet.getVy());
 				data.put("x", bullet.getX());
 				data.put("y", bullet.getY());
+				data.put("shootOption", bullet.getShootOption());
 				socket.emit("playerShot", data);
 			} catch (JSONException e) {
 				e.printStackTrace();

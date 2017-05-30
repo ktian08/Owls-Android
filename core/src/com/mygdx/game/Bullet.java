@@ -17,6 +17,7 @@ public class Bullet {
     public boolean toBeRemoved = false;
     private float vx = 0;
     private float vy = 0;
+    private int shootOption = 0;
 
 
     public Bullet(int shootOption, Sprite playerSprite, World world) {
@@ -26,7 +27,9 @@ public class Bullet {
         bulletSprite.setSize(playerSprite.getHeight()/4, playerSprite.getHeight()/4); //size sprite
 
         //needs a small distance between bullet and player so doesn't register as collision
-        float smallDistance = playerSprite.getHeight()/100;
+        float smallDistance = playerSprite.getHeight()/4;
+
+        this.shootOption = shootOption;
 
         //set initial sprite position
         if(shootOption==1) { //shoot left
@@ -58,32 +61,6 @@ public class Bullet {
 
     }
 
-    public Bullet(float x, float y, Sprite playerSprite, World world) {
-
-        //create sprite
-        bulletSprite = new Sprite(new Texture("bullet.png"));
-        bulletSprite.setSize(playerSprite.getHeight()/4, playerSprite.getHeight()/4); //size sprite
-
-        bulletSprite.setPosition(x, y);
-
-        //configure bullet body
-        BodyDef bodyDefB = new BodyDef();
-        bodyDefB.type = BodyDef.BodyType.DynamicBody;
-        bodyDefB.position.set(bulletSprite.getX()+bulletSprite.getWidth()/2, bulletSprite.getY()+bulletSprite.getHeight()/2);
-
-        FixtureDef fixtureDefB = new FixtureDef();
-        CircleShape bulletCircle = new CircleShape();
-        bulletCircle.setRadius(bulletSprite.getWidth()/2);
-        fixtureDefB.shape = bulletCircle;
-
-        bulletBody = world.createBody(bodyDefB);
-        bulletFixture = bulletBody.createFixture(fixtureDefB);
-        bulletFixture.setUserData(this); //for world listener
-        bulletBody.setGravityScale(0f); //turn off gravity
-
-        bulletCircle.dispose();
-
-    }
 
     public void setVx(float vel) {vx = vel; bulletBody.setLinearVelocity(vx, vy);}
 
@@ -108,5 +85,7 @@ public class Bullet {
     public void setY(float pos) {
         bulletBody.setTransform(bulletBody.getPosition().x, pos, 0);
     }
+
+    public int getShootOption() {return shootOption;}
 
 }
