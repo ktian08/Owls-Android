@@ -61,7 +61,7 @@ public class OwlsGame extends ApplicationAdapter {
 	private float timerB = 0f;
 	private float updateTimeB = 0.100f;
 
-	private Sprite playerSprite, playerSprite2, oppPlayerSprite;
+	private Sprite playerSprite, playerSprite2, oppPlayerSprite, bulletSprite;
 	private OrthographicCamera camera;
 	private Box2DDebugRenderer debugRenderer;
 	private Matrix4 debugMatrix;
@@ -120,6 +120,8 @@ public class OwlsGame extends ApplicationAdapter {
 		playerSprite2 = new Sprite(new Texture("whitecircle.png"));
 		oppPlayerSprite = new Sprite(new Texture("whitecircle.png"));
 
+		bulletSprite = new Sprite(new Texture("bullet.png"));
+
 		player1 = new Player(playerSprite, 3*HEIGHT/40, 3*HEIGHT/40, 0, -HEIGHT/5, world);
 		oppPlayers = new HashMap<String, Player>();
 		oppBullets = new HashMap<String, Bullet>();
@@ -158,7 +160,7 @@ public class OwlsGame extends ApplicationAdapter {
 	//server stuff
 	public void connectSocket() { //connect to socket (client side)
 		try {
-			socket = IO.socket("http://192.168.1.107:8080");
+			socket = IO.socket("http://192.168.3.226:8080");
 			socket.connect();
 		} catch (Exception e) {
 			System.out.println(e);
@@ -190,6 +192,7 @@ public class OwlsGame extends ApplicationAdapter {
 				try{
 					String id = data.getString("id");
 					oppPlayers.put(id, new Player(oppPlayerSprite, 3*HEIGHT/40, 3*HEIGHT/40, 0, 0, world));
+					oppPlayers.get(id).getPlayerBody().setGravityScale(0f);
 					Gdx.app.log("SocketIO", "New Player Connected: "+ id);
 				} catch(JSONException e) {
 					Gdx.app.log("SocketIO", "Problem retrieving JSON");
@@ -260,6 +263,8 @@ public class OwlsGame extends ApplicationAdapter {
 							double y = data.getDouble("y");
 							int shootOption = data.getInt("shootOption");
 							Bullet newBullet = new Bullet(shootOption, oppPlayers.get(id).getPlayerSprite(), world);
+							newBullet.setBulletSprite(bulletSprite, oppPlayers.get(id).getPlayerSprite());
+
 							newBullet.setVx((float)vx); newBullet.setVy((float)vy); newBullet.setX((float)x); newBullet.setY((float)y);
 
 							for(HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
@@ -374,10 +379,10 @@ public class OwlsGame extends ApplicationAdapter {
 		//draw all bullets from player1
 		player1.drawAllBullets(batch);
 
+
 		//update opposing players from server hashmap
 		for(HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
 
-			entry.getValue().getPlayerBody().setGravityScale(0f);
 			entry.getValue().getPlayerSprite().draw(batch); //draw player sprite
 			entry.getValue().updatePlayerPos(); //update position
 

@@ -88,4 +88,23 @@ public class Bullet {
 
     public int getShootOption() {return shootOption;}
 
+    public void setBulletSprite(Sprite bulletS, Sprite playerSprite) {
+        bulletSprite = bulletS;
+        bulletSprite.setSize(playerSprite.getHeight()/4, playerSprite.getHeight()/4); //size sprite
+
+        //needs a small distance between bullet and player so doesn't register as collision
+        float smallDistance = playerSprite.getHeight()/4;
+
+        //set initial sprite position
+        if(shootOption==1) { //shoot left
+            bulletSprite.setPosition(playerSprite.getX()-bulletSprite.getWidth()-smallDistance, playerSprite.getY()+playerSprite.getHeight()/2-bulletSprite.getHeight()/2);
+        } else if(shootOption == 2) { //up
+            bulletSprite.setPosition(playerSprite.getX()+playerSprite.getWidth()/2-bulletSprite.getWidth()/2, playerSprite.getY()+playerSprite.getHeight()+smallDistance);
+        } else if(shootOption == 3) { //right
+            bulletSprite.setPosition(playerSprite.getX()+playerSprite.getWidth()+smallDistance, playerSprite.getY()+playerSprite.getHeight()/2-bulletSprite.getHeight()/2);
+        } else if(shootOption == 4) { //down
+            bulletSprite.setPosition(playerSprite.getX()+playerSprite.getWidth()/2-bulletSprite.getWidth()/2, playerSprite.getY()-bulletSprite.getHeight()-smallDistance);
+        }
+    }
+
 }
