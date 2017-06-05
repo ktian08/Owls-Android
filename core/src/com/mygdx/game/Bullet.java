@@ -8,15 +8,19 @@ import com.badlogic.gdx.physics.box2d.CircleShape;
 import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.physics.box2d.FixtureDef;
 import com.badlogic.gdx.physics.box2d.World;
+import com.badlogic.gdx.utils.Pool;
 
-public class Bullet {
+public class Bullet implements Pool.Poolable {
 
     public Body bulletBody;
     public Sprite bulletSprite;
     private Fixture bulletFixture;
     public boolean toBeRemoved = false;
+    public boolean toBeFreed = false;
     private float vx = 0;
+    private float x;
     private float vy = 0;
+    private float y;
     private int shootOption = 0;
 
 
@@ -88,8 +92,8 @@ public class Bullet {
 
     public int getShootOption() {return shootOption;}
 
-    public void setBulletSprite(Sprite bulletS, Sprite playerSprite) {
-        bulletSprite = bulletS;
+    public void setBulletSprite(int shootOption, Texture bulletS, Sprite playerSprite) {
+        bulletSprite = new Sprite(bulletS);
         bulletSprite.setSize(playerSprite.getHeight()/4, playerSprite.getHeight()/4); //size sprite
 
         //needs a small distance between bullet and player so doesn't register as collision
@@ -107,4 +111,14 @@ public class Bullet {
         }
     }
 
+    public void setShootOption(int shootOption) {
+        this.shootOption =  shootOption;
+    }
+
+    @Override
+    public void reset() {
+        toBeRemoved = false;
+        toBeFreed = false;
+        shootOption = 0;
+    }
 }

@@ -4,7 +4,7 @@ var server = require('http').Server(app);
 var io = require('socket.io')(server);
 var players = [];
 
-server.listen(8080, function() {
+server.listen(8081, function() {
 
 	console.log("Server is now running...");
 
@@ -17,6 +17,7 @@ io.on('connection', function(socket) {
 
 	socket.emit('getPlayers', players);
 	socket.broadcast.emit('newPlayer', { id: socket.id });
+	players.push(new player(socket.id, 0, 0, 0, 0)); //add to newly joined client
 
 	socket.on('playerMoved', function(data) {
         data.id = socket.id;
@@ -54,8 +55,11 @@ io.on('connection', function(socket) {
 
 	});
 
-	players.push(new player(socket.id, 0, 0, 0, 0)); //add to newly joined client
 
+});
+
+process.on('uncaughtException', function (error) {
+   console.log(error.stack);
 });
 
 function player(id, vx, vy, x, y) {

@@ -23,6 +23,7 @@ import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Touchpad;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.Pool;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
 import org.json.JSONArray;
@@ -30,6 +31,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.HashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import io.socket.client.IO;
 import io.socket.client.Socket;
@@ -48,6 +51,9 @@ public class OwlsGame extends ApplicationAdapter {
 //	private float startTime = 0;
 //	private float latency = 0;
 
+
+	private Lock mutex;
+
 	private SpriteBatch batch;
 	private World world;
 	private Stage stage;
@@ -57,11 +63,14 @@ public class OwlsGame extends ApplicationAdapter {
 
 	private Player player1;
 	private HashMap<String, Player> oppPlayers;
-	private HashMap<String, Bullet> oppBullets;
+	private String oppID = "";
+	private Pool<Bullet> oppBulletPool;
+	private int oppShootOption;
 	private float timerB = 0f;
 	private float updateTimeB = 0.100f;
 
-	private Sprite playerSprite, playerSprite2, oppPlayerSprite, bulletSprite;
+	private Sprite playerSprite, playerSprite2, oppPlayerSprite;
+	private Texture bulletTexture;
 	private OrthographicCamera camera;
 	private Box2DDebugRenderer debugRenderer;
 	private Matrix4 debugMatrix;
@@ -79,6 +88,8 @@ public class OwlsGame extends ApplicationAdapter {
 
 	@Override
 	public void create () {
+
+		mutex = new ReentrantLock();
 
 		//initialize the batch
 		batch = new SpriteBatch();
@@ -116,15 +127,30 @@ public class OwlsGame extends ApplicationAdapter {
 		Gdx.input.setInputProcessor(stage);
 
 		//create your player
-		playerSprite = new Sprite(new Texture("whitecircle.png"));
-		playerSprite2 = new Sprite(new Texture("whitecircle.png"));
-		oppPlayerSprite = new Sprite(new Texture("whitecircle.png"));
-
-		bulletSprite = new Sprite(new Texture("bullet.png"));
+		Texture playerTexture = new Texture("whitecircle.png");
+		playerSprite = new Sprite(playerTexture);
+		playerSprite2 = new Sprite(playerTexture);
+		oppPlayerSprite = new Sprite(playerTexture);
 
 		player1 = new Player(playerSprite, 3*HEIGHT/40, 3*HEIGHT/40, 0, -HEIGHT/5, world);
 		oppPlayers = new HashMap<String, Player>();
-		oppBullets = new HashMap<String, Bullet>();
+
+		// bullet pool for opposing player
+		bulletTexture = new Texture("bullet.png");
+		oppBulletPool = new Pool<Bullet>() {
+			@Override
+			protected Bullet newObject() {
+				if(oppShootOption==1) {
+					return new Bullet(1, oppPlayers.get(oppID).getPlayerSprite(), world);
+				} else if(oppShootOption==2) {
+					return new Bullet(2, oppPlayers.get(oppID).getPlayerSprite(), world);
+				} else if(oppShootOption==3) {
+					return new Bullet(3, oppPlayers.get(oppID).getPlayerSprite(), world);
+				} else {
+					return new Bullet(4, oppPlayers.get(oppID).getPlayerSprite(), world);
+				}
+			}
+		};
 
 		//create platforms
 		ground = new Platform(WIDTH, HEIGHT/10, -WIDTH/2, -HEIGHT/2, world);
@@ -160,7 +186,7 @@ public class OwlsGame extends ApplicationAdapter {
 	//server stuff
 	public void connectSocket() { //connect to socket (client side)
 		try {
-			socket = IO.socket("http://192.168.3.226:8080");
+			socket = IO.socket("http://192.168.1.114:8081"); //10.47.45.218 is school,
 			socket.connect();
 		} catch (Exception e) {
 			System.out.println(e);
@@ -190,10 +216,11 @@ public class OwlsGame extends ApplicationAdapter {
 			public void call(Object... args) { //i artificially limit to one new player aka 1v1 me irl
 				JSONObject data = (JSONObject) args[0];
 				try{
-					String id = data.getString("id");
-					oppPlayers.put(id, new Player(oppPlayerSprite, 3*HEIGHT/40, 3*HEIGHT/40, 0, 0, world));
-					oppPlayers.get(id).getPlayerBody().setGravityScale(0f);
-					Gdx.app.log("SocketIO", "New Player Connected: "+ id);
+					oppID = data.getString("id");
+					Player newPlayer = new Player(oppPlayerSprite, 3*HEIGHT/40, 3*HEIGHT/40, 0, 0, world);
+					newPlayer.getPlayerBody().setGravityScale(0f);
+					oppPlayers.put(oppID, newPlayer);
+					Gdx.app.log("SocketIO", "New Player Connected: "+ oppID);
 				} catch(JSONException e) {
 					Gdx.app.log("SocketIO", "Problem retrieving JSON");
 				}
@@ -251,31 +278,31 @@ public class OwlsGame extends ApplicationAdapter {
 //				latency = System.currentTimeMillis() - startTime;
 //				Gdx.app.log("latency", latency+", "+ startTime);
 //			}
-				.on("playerShot", new Emitter.Listener() {
-					@Override
-					public void call(Object... args) {
-						JSONObject data = (JSONObject) args[0];
+			.on("playerShot", new Emitter.Listener() {
+				@Override
+				public void call(Object... args) {
+					JSONObject data = (JSONObject) args[0];
+					try {
+						oppID = data.getString("id");
+						double vx = data.getDouble("vx");
+						double y = data.getDouble("y");
+						double x = data.getDouble("x");
+						double vy = data.getDouble("vy");
+						oppShootOption = data.getInt("shootOption");
+						mutex.lock();
 						try {
-							String id = data.getString("id");
-							double vx = data.getDouble("vx");
-							double vy = data.getDouble("vy");
-							double x = data.getDouble("x");
-							double y = data.getDouble("y");
-							int shootOption = data.getInt("shootOption");
-							Bullet newBullet = new Bullet(shootOption, oppPlayers.get(id).getPlayerSprite(), world);
-							newBullet.setBulletSprite(bulletSprite, oppPlayers.get(id).getPlayerSprite());
-
+							Bullet newBullet = oppBulletPool.obtain();
+							newBullet.setBulletSprite(oppShootOption, bulletTexture, oppPlayers.get(oppID).getPlayerSprite());
 							newBullet.setVx((float)vx); newBullet.setVy((float)vy); newBullet.setX((float)x); newBullet.setY((float)y);
-
-							for(HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
-								entry.getValue().bulletList.add(newBullet);
-							}
-
-						} catch (JSONException e) {
-							Gdx.app.log("SocketIO", "Error updating bullet position");
+							oppPlayers.get(oppID).bulletList.add(newBullet);
+						} finally {
+							mutex.unlock();
 						}
+					} catch (JSONException e) {
+						e.printStackTrace();
 					}
-				});
+				}
+			});
 	}
 
 	public void updatePositionOnOppScreen(float dt) {
@@ -308,13 +335,14 @@ public class OwlsGame extends ApplicationAdapter {
 		timerB+=dt;
 		if(timerB > updateTimeB && player1.hasShot) {
 			try{
-				Bullet bullet = player1.bulletList.get(player1.bulletList.size()-1);
-				data.put("vx", bullet.getVx());
-				data.put("vy", bullet.getVy());
-				data.put("x", bullet.getX());
-				data.put("y", bullet.getY());
-				data.put("shootOption", bullet.getShootOption());
-				socket.emit("playerShot", data);
+				if(!player1.bulletList.isEmpty()) {
+					data.put("vx", player1.bulletList.get(player1.bulletList.size()-1).getVx());
+					data.put("x", player1.bulletList.get(player1.bulletList.size()-1).getX());
+					data.put("y", player1.bulletList.get(player1.bulletList.size()-1).getY());
+					data.put("vy", player1.bulletList.get(player1.bulletList.size()-1).getVy());
+					data.put("shootOption", player1.bulletList.get(player1.bulletList.size()-1).getShootOption());
+					socket.emit("playerShot", data);
+				}
 			} catch (JSONException e) {
 				e.printStackTrace();
 			}
@@ -330,6 +358,18 @@ public class OwlsGame extends ApplicationAdapter {
 		//update camera and world
 		camera.update();
 		world.step(Gdx.graphics.getDeltaTime(), 6, 2); //update world
+
+		//destroy all toBeRemoved bullets for other player
+		for(HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
+			for(int i = 0; i<entry.getValue().bulletList.size(); i++) {
+				if(!entry.getValue().bulletList.isEmpty() && entry.getValue().bulletList.get(i).toBeRemoved) {
+					Bullet bullet = entry.getValue().bulletList.get(i);
+					removeBodySafely(bullet.bulletBody);
+					entry.getValue().bulletList.remove(i);
+					//oppBulletPool.free(bullet);
+				}
+			}
+		}
 
 		//clear the background and allow stuff to print on screen
 		Gdx.gl.glClearColor(1, 1, 1, 1);
@@ -355,7 +395,7 @@ public class OwlsGame extends ApplicationAdapter {
 		updatePositionOnOppScreen(Gdx.graphics.getDeltaTime());
 
 		//shoot bullets in proper directions + add delay
-		player1.clickToShoot(shooterUI, bulletSideVel, bulletUpDownVel, 300f);
+		player1.clickToShoot(shooterUI, bulletSideVel, bulletUpDownVel, 500f);
 
 		//change position of bullets
 		player1.updateBulletPositions();
@@ -379,15 +419,14 @@ public class OwlsGame extends ApplicationAdapter {
 		//draw all bullets from player1
 		player1.drawAllBullets(batch);
 
-
 		//update opposing players from server hashmap
 		for(HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
 
-			entry.getValue().getPlayerSprite().draw(batch); //draw player sprite
-			entry.getValue().updatePlayerPos(); //update position
-
 			entry.getValue().drawAllBullets(batch); //draw bullet sprites
 			entry.getValue().updateBulletPositions(); //update bullet positions
+
+			entry.getValue().getPlayerSprite().draw(batch); //draw player sprite
+			entry.getValue().updatePlayerPos(); //update position
 
 		}
 
@@ -399,19 +438,9 @@ public class OwlsGame extends ApplicationAdapter {
 
 		//destroy all toBeRemoved bullets for your player
 		for(int i = 0; i<player1.bulletList.size(); i++) {
-			if(player1.bulletList.get(i).toBeRemoved) {
+			if(player1.bulletList.get(i)!=null && player1.bulletList.get(i).toBeRemoved) {
 				removeBodySafely(player1.bulletList.get(i).bulletBody);
 				player1.bulletList.remove(i);
-			}
-		}
-
-		//destroy all toBeRemoved bullets for your player
-		for(HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
-			for(int i = 0; i<entry.getValue().bulletList.size(); i++) {
-				if(entry.getValue().bulletList.get(i).toBeRemoved) {
-					removeBodySafely(entry.getValue().bulletList.get(i).bulletBody);
-					entry.getValue().bulletList.remove(i);
-				}
 			}
 		}
 
@@ -460,6 +489,9 @@ public class OwlsGame extends ApplicationAdapter {
 					} else if(fixtureB.getUserData() instanceof Bullet) {
 						((Bullet) fixtureB.getUserData()).toBeRemoved = true;
 					}
+				}
+				if((fixtureA.getUserData() instanceof Bullet && (fixtureB.getUserData() instanceof Bullet))) {
+					contact.setEnabled(false);
 				}
 			}
 

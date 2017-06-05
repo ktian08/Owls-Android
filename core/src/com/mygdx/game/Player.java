@@ -221,8 +221,10 @@ public class Player {
     public void updateBulletPositions() {
 
         for(int i = 0; i<bulletList.size(); i++) {
-            bulletList.get(i).bulletSprite.setPosition(bulletList.get(i).bulletBody.getPosition().x - bulletList.get(i).bulletSprite.getWidth() / 2
-                    , bulletList.get(i).bulletBody.getPosition().y - bulletList.get(i).bulletSprite.getHeight() / 2);
+            if(!bulletList.isEmpty()) {
+                bulletList.get(i).bulletSprite.setPosition(bulletList.get(i).bulletBody.getPosition().x - bulletList.get(i).bulletSprite.getWidth() / 2
+                        , bulletList.get(i).bulletBody.getPosition().y - bulletList.get(i).bulletSprite.getHeight() / 2);
+            }
         }
 
     }
@@ -233,6 +235,5 @@ public class Player {
             bulletList.get(i).bulletSprite.draw(batch);
         }
     }
-
 
 }
