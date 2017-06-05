@@ -180,7 +180,7 @@ public class OwlsGame extends ApplicationAdapter {
 	//server stuff
 	public void connectSocket() { //connect to socket (client side)
 		try {
-			socket = IO.socket("http://192.168.1.114:8081"); //10.47.45.218 is school,
+			socket = IO.socket("http://10.47.40.6:8082"); //10.47.40.6 is school, 192.168.1.114
 			socket.connect();
 		} catch (Exception e) {
 			System.out.println(e);
@@ -358,7 +358,6 @@ public class OwlsGame extends ApplicationAdapter {
 					Bullet bullet = entry.getValue().bulletList.get(i);
 					removeBodySafely(bullet.bulletBody);
 					entry.getValue().bulletList.remove(i);
-					//oppBulletPool.free(bullet);
 				}
 			}
 		}
@@ -387,13 +386,19 @@ public class OwlsGame extends ApplicationAdapter {
 		updatePositionOnOppScreen(Gdx.graphics.getDeltaTime());
 
 		//shoot bullets in proper directions + add delay
-		player1.clickToShoot(shooterUI, bulletSideVel, bulletUpDownVel, 500f);
+		if(player1.isAlive) {
+			player1.clickToShoot(shooterUI, bulletSideVel, bulletUpDownVel, 500f);
+		}
 
 		//change position of bullets
-		player1.updateBulletPositions();
+		if(player1.isAlive) {
+			player1.updateBulletPositions();
+		}
 
 		//update bullets on opposing screen
-		updateBulletPosOnOppScreen(Gdx.graphics.getDeltaTime());
+		if(player1.isAlive) {
+			updateBulletPosOnOppScreen(Gdx.graphics.getDeltaTime());
+		}
 
 		//execute batch
 		batch.begin();
@@ -405,21 +410,24 @@ public class OwlsGame extends ApplicationAdapter {
 		platform4.getPlatformSprite().draw(batch); //platform4
 		platform5.getPlatformSprite().draw(batch); //platform5
 
-		//draw player
-		player1.getPlayerSprite().draw(batch);
 
-		//draw all bullets from player1
-		player1.drawAllBullets(batch);
+		if(player1.isAlive) {
+			//draw player
+			player1.getPlayerSprite().draw(batch);
+
+			//draw all bullets from player1
+			player1.drawAllBullets(batch);
+		}
 
 		//update opposing players from server hashmap
 		for (HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
+			if(entry.getValue().isAlive) {
+				entry.getValue().drawAllBullets(batch); //draw bullet sprites
+				entry.getValue().updateBulletPositions(); //update bullet positions
 
-			entry.getValue().drawAllBullets(batch); //draw bullet sprites
-			entry.getValue().updateBulletPositions(); //update bullet positions
-
-			entry.getValue().getPlayerSprite().draw(batch); //draw player sprite
-			entry.getValue().updatePlayerPos(); //update position
-
+				entry.getValue().getPlayerSprite().draw(batch); //draw player sprite
+				entry.getValue().updatePlayerPos(); //update position
+			}
 		}
 
 		batch.end();
@@ -466,9 +474,15 @@ public class OwlsGame extends ApplicationAdapter {
 					if (fixtureA.getUserData() instanceof Platform) {
 						platformY = fixtureA.getBody().getPosition().y;
 						playerY = fixtureB.getBody().getPosition().y;
+						if(!((Player)fixtureB.getUserData()).isAlive) {
+							contact.setEnabled(false);
+						}
 					} else if (fixtureA.getUserData() instanceof Player) {
 						platformY = fixtureA.getBody().getPosition().y;
 						playerY = fixtureB.getBody().getPosition().y;
+						if(!((Player)fixtureA.getUserData()).isAlive) {
+							contact.setEnabled(false);
+						}
 					}
 					if (playerY < (platformY + 4 * player1.getPlayerSprite().getHeight() / 6)) { // the player is below
 						contact.setEnabled(false);
@@ -479,9 +493,15 @@ public class OwlsGame extends ApplicationAdapter {
 					if(fixtureA.getUserData() instanceof Bullet) {
 						((Bullet) fixtureA.getUserData()).toBeRemoved = true;
 						((Bullet) fixtureA.getUserData()).toBeFreed = true;
+						if(fixtureB.getUserData() instanceof Player) {
+							((Player)fixtureB.getUserData()).isAlive = false;
+						}
 					} else if(fixtureB.getUserData() instanceof Bullet) {
 						((Bullet) fixtureB.getUserData()).toBeRemoved = true;
 						((Bullet) fixtureB.getUserData()).toBeFreed = true;
+						if(fixtureA.getUserData() instanceof Player) {
+							((Player)fixtureA.getUserData()).isAlive = false;
+						}
 					}
 				}
 				if((fixtureA.getUserData() instanceof Bullet && (fixtureB.getUserData() instanceof Bullet))) {

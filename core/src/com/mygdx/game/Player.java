@@ -25,6 +25,7 @@ public class Player {
     public ArrayList<Bullet> bulletList;
     public boolean hasMoved = false;
     public boolean hasShot = false;
+    public boolean isAlive = true;
 
     public Player(Sprite sprite, float width, float height, float xPos, float yPos, World world) {
 
