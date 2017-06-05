@@ -58,10 +58,6 @@ io.on('connection', function(socket) {
 
 });
 
-process.on('uncaughtException', function (error) {
-   console.log(error.stack);
-});
-
 function player(id, vx, vy, x, y) {
     this.id = id;
     this.vx = vx;

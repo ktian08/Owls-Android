@@ -1,6 +1,7 @@
 package com.mygdx.game;
 
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
@@ -121,4 +122,12 @@ public class Bullet implements Pool.Poolable {
         toBeFreed = false;
         shootOption = 0;
     }
+
+    public void updateBulletPosition() {
+        bulletSprite.setPosition(bulletBody.getPosition().x - bulletSprite.getWidth() / 2
+                , bulletBody.getPosition().y - bulletSprite.getHeight() / 2);
+    }
+
+    public void drawBullet(Batch batch) {bulletSprite.draw(batch);}
+
 }

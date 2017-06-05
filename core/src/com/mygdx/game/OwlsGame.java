@@ -31,8 +31,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.HashMap;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import io.socket.client.IO;
 import io.socket.client.Socket;
@@ -51,9 +49,6 @@ public class OwlsGame extends ApplicationAdapter {
 //	private float startTime = 0;
 //	private float latency = 0;
 
-
-	private Lock mutex;
-
 	private SpriteBatch batch;
 	private World world;
 	private Stage stage;
@@ -66,6 +61,7 @@ public class OwlsGame extends ApplicationAdapter {
 	private String oppID = "";
 	private Pool<Bullet> oppBulletPool;
 	private int oppShootOption;
+	private boolean updatingBullets = false;
 	private float timerB = 0f;
 	private float updateTimeB = 0.100f;
 
@@ -88,8 +84,6 @@ public class OwlsGame extends ApplicationAdapter {
 
 	@Override
 	public void create () {
-
-		mutex = new ReentrantLock();
 
 		//initialize the batch
 		batch = new SpriteBatch();
@@ -283,21 +277,18 @@ public class OwlsGame extends ApplicationAdapter {
 				public void call(Object... args) {
 					JSONObject data = (JSONObject) args[0];
 					try {
+						updatingBullets = true;
 						oppID = data.getString("id");
 						double vx = data.getDouble("vx");
 						double y = data.getDouble("y");
 						double x = data.getDouble("x");
 						double vy = data.getDouble("vy");
 						oppShootOption = data.getInt("shootOption");
-						mutex.lock();
-						try {
-							Bullet newBullet = oppBulletPool.obtain();
-							newBullet.setBulletSprite(oppShootOption, bulletTexture, oppPlayers.get(oppID).getPlayerSprite());
-							newBullet.setVx((float)vx); newBullet.setVy((float)vy); newBullet.setX((float)x); newBullet.setY((float)y);
-							oppPlayers.get(oppID).bulletList.add(newBullet);
-						} finally {
-							mutex.unlock();
-						}
+						Bullet newBullet = oppBulletPool.obtain();
+						newBullet.setBulletSprite(oppShootOption, bulletTexture, oppPlayers.get(oppID).getPlayerSprite());
+						newBullet.setVx((float)vx); newBullet.setVy((float)vy); newBullet.setX((float)x); newBullet.setY((float)y);
+						oppPlayers.get(oppID).bulletList.add(newBullet);
+						updatingBullets = false;
 					} catch (JSONException e) {
 						e.printStackTrace();
 					}
@@ -349,20 +340,21 @@ public class OwlsGame extends ApplicationAdapter {
 			player1.hasShot = false;
 			timerB = 0;
 		}
-
 	}
 
 	@Override
 	public void render () {
 
 		//update camera and world
-		camera.update();
-		world.step(Gdx.graphics.getDeltaTime(), 6, 2); //update world
+		if(!updatingBullets) {
+			camera.update();
+			world.step(Gdx.graphics.getDeltaTime(), 6, 2); //update world
+		}
 
 		//destroy all toBeRemoved bullets for other player
-		for(HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
-			for(int i = 0; i<entry.getValue().bulletList.size(); i++) {
-				if(!entry.getValue().bulletList.isEmpty() && entry.getValue().bulletList.get(i).toBeRemoved) {
+		for (HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
+			for (int i = 0; i < entry.getValue().bulletList.size(); i++) {
+				if (!entry.getValue().bulletList.isEmpty() && entry.getValue().bulletList.get(i).toBeFreed) {
 					Bullet bullet = entry.getValue().bulletList.get(i);
 					removeBodySafely(bullet.bulletBody);
 					entry.getValue().bulletList.remove(i);
@@ -420,7 +412,7 @@ public class OwlsGame extends ApplicationAdapter {
 		player1.drawAllBullets(batch);
 
 		//update opposing players from server hashmap
-		for(HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
+		for (HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
 
 			entry.getValue().drawAllBullets(batch); //draw bullet sprites
 			entry.getValue().updateBulletPositions(); //update bullet positions
@@ -437,8 +429,8 @@ public class OwlsGame extends ApplicationAdapter {
 		stage.draw();
 
 		//destroy all toBeRemoved bullets for your player
-		for(int i = 0; i<player1.bulletList.size(); i++) {
-			if(player1.bulletList.get(i)!=null && player1.bulletList.get(i).toBeRemoved) {
+		for (int i = 0; i < player1.bulletList.size(); i++) {
+			if (player1.bulletList.get(i) != null && player1.bulletList.get(i).toBeRemoved) {
 				removeBodySafely(player1.bulletList.get(i).bulletBody);
 				player1.bulletList.remove(i);
 			}
@@ -486,8 +478,10 @@ public class OwlsGame extends ApplicationAdapter {
 						|| (fixtureB.getUserData() instanceof Bullet && !(fixtureA.getUserData() instanceof Bullet))) { //collision b/w bullet and something not a bullet
 					if(fixtureA.getUserData() instanceof Bullet) {
 						((Bullet) fixtureA.getUserData()).toBeRemoved = true;
+						((Bullet) fixtureA.getUserData()).toBeFreed = true;
 					} else if(fixtureB.getUserData() instanceof Bullet) {
 						((Bullet) fixtureB.getUserData()).toBeRemoved = true;
+						((Bullet) fixtureB.getUserData()).toBeFreed = true;
 					}
 				}
 				if((fixtureA.getUserData() instanceof Bullet && (fixtureB.getUserData() instanceof Bullet))) {

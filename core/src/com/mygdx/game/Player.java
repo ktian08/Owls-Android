@@ -235,5 +235,4 @@ public class Player {
             bulletList.get(i).bulletSprite.draw(batch);
         }
     }
-
 }
