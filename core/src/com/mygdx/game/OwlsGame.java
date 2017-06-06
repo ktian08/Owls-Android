@@ -23,7 +23,6 @@ import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Touchpad;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.Pool;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
 import org.json.JSONArray;
@@ -59,7 +58,7 @@ public class OwlsGame extends ApplicationAdapter {
 	private Player player1;
 	private HashMap<String, Player> oppPlayers;
 	private String oppID = "";
-	private Pool<Bullet> oppBulletPool;
+	//private Pool<Bullet> oppBulletPool;
 	private int oppShootOption;
 	private boolean updatingBullets = false;
 	private float timerB = 0f;
@@ -131,20 +130,20 @@ public class OwlsGame extends ApplicationAdapter {
 
 		// bullet pool for opposing player
 		bulletTexture = new Texture("bullet.png");
-		oppBulletPool = new Pool<Bullet>() {
-			@Override
-			protected Bullet newObject() {
-				if(oppShootOption==1) {
-					return new Bullet(1, oppPlayers.get(oppID).getPlayerSprite(), world);
-				} else if(oppShootOption==2) {
-					return new Bullet(2, oppPlayers.get(oppID).getPlayerSprite(), world);
-				} else if(oppShootOption==3) {
-					return new Bullet(3, oppPlayers.get(oppID).getPlayerSprite(), world);
-				} else {
-					return new Bullet(4, oppPlayers.get(oppID).getPlayerSprite(), world);
-				}
-			}
-		};
+//		oppBulletPool = new Pool<Bullet>() {
+//			@Override
+//			protected Bullet newObject() {
+//				if(oppShootOption==1) {
+//					return new Bullet(1, oppPlayers.get(oppID).getPlayerSprite(), world);
+//				} else if(oppShootOption==2) {
+//					return new Bullet(2, oppPlayers.get(oppID).getPlayerSprite(), world);
+//				} else if(oppShootOption==3) {
+//					return new Bullet(3, oppPlayers.get(oppID).getPlayerSprite(), world);
+//				} else {
+//					return new Bullet(4, oppPlayers.get(oppID).getPlayerSprite(), world);
+//				}
+//			}
+//		};
 
 		//create platforms
 		ground = new Platform(WIDTH, HEIGHT/10, -WIDTH/2, -HEIGHT/2, world);
@@ -180,7 +179,7 @@ public class OwlsGame extends ApplicationAdapter {
 	//server stuff
 	public void connectSocket() { //connect to socket (client side)
 		try {
-			socket = IO.socket("http://10.47.40.6:8082"); //10.47.40.6 is school, 192.168.1.114
+			socket = IO.socket("http://10.47.40.44:8082"); //10.47.40.6 is school, 192.168.1.114
 			socket.connect();
 		} catch (Exception e) {
 			System.out.println(e);
@@ -284,9 +283,10 @@ public class OwlsGame extends ApplicationAdapter {
 						double x = data.getDouble("x");
 						double vy = data.getDouble("vy");
 						oppShootOption = data.getInt("shootOption");
-						Bullet newBullet = oppBulletPool.obtain();
+						//Bullet newBullet = oppBulletPool.obtain();
+						Bullet newBullet = new Bullet(oppShootOption, oppPlayers.get(oppID).getPlayerSprite(), world);
 						newBullet.setBulletSprite(oppShootOption, bulletTexture, oppPlayers.get(oppID).getPlayerSprite());
-						newBullet.setVx((float)vx); newBullet.setVy((float)vy); newBullet.setX((float)x); newBullet.setY((float)y);
+						newBullet.setVx((float)vx); newBullet.setVy((float)vy); //newBullet.setX((float)x); newBullet.setY((float)y);
 						oppPlayers.get(oppID).bulletList.add(newBullet);
 						updatingBullets = false;
 					} catch (JSONException e) {
@@ -346,8 +346,9 @@ public class OwlsGame extends ApplicationAdapter {
 	public void render () {
 
 		//update camera and world
+		camera.update();
+
 		if(!updatingBullets) {
-			camera.update();
 			world.step(Gdx.graphics.getDeltaTime(), 6, 2); //update world
 		}
 
@@ -384,6 +385,7 @@ public class OwlsGame extends ApplicationAdapter {
 
 		//update your player on opponent's screen
 		updatePositionOnOppScreen(Gdx.graphics.getDeltaTime());
+
 
 		//shoot bullets in proper directions + add delay
 		if(player1.isAlive) {
@@ -474,17 +476,19 @@ public class OwlsGame extends ApplicationAdapter {
 					if (fixtureA.getUserData() instanceof Platform) {
 						platformY = fixtureA.getBody().getPosition().y;
 						playerY = fixtureB.getBody().getPosition().y;
-						if(!((Player)fixtureB.getUserData()).isAlive) {
-							contact.setEnabled(false);
-						}
 					} else if (fixtureA.getUserData() instanceof Player) {
 						platformY = fixtureA.getBody().getPosition().y;
 						playerY = fixtureB.getBody().getPosition().y;
-						if(!((Player)fixtureA.getUserData()).isAlive) {
-							contact.setEnabled(false);
-						}
 					}
 					if (playerY < (platformY + 4 * player1.getPlayerSprite().getHeight() / 6)) { // the player is below
+						contact.setEnabled(false);
+					}
+				}
+				if((fixtureA.getUserData() instanceof Player && !(fixtureB.getUserData() instanceof Player))
+						|| (fixtureB.getUserData() instanceof Player && !(fixtureA.getUserData() instanceof Player))) {
+					if (fixtureA.getUserData() instanceof Player && !((Player)fixtureA.getUserData()).isAlive) {
+						contact.setEnabled(false);
+					} else if(fixtureB.getUserData() instanceof Player && !((Player)fixtureB.getUserData()).isAlive) {
 						contact.setEnabled(false);
 					}
 				}
