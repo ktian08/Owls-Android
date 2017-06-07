@@ -26,6 +26,7 @@ public class Player {
     public boolean hasMoved = false;
     public boolean hasShot = false;
     public boolean isAlive = true;
+    public int bulletCount = 0;
 
     public Player(Sprite sprite, float width, float height, float xPos, float yPos, World world) {
 
@@ -164,27 +165,31 @@ public class Player {
             canShoot = true;
         }
 
-        if(canShoot) {
+        if(canShoot && bulletCount<8) {
             if (shooterUI.leftTouch) {
                 shoot(1, xVel, yVel);
                 canShoot = false;
                 timeAfterLastBullet = 0;
                 hasShot = true;
+                bulletCount++;
             } else if (shooterUI.topTouch) {
                 shoot(2, xVel, yVel);
                 canShoot = false;
                 timeAfterLastBullet = 0;
                 hasShot = true;
+                bulletCount++;
             } else if (shooterUI.rightTouch) {
                 shoot(3, xVel, yVel);
                 canShoot = false;
                 timeAfterLastBullet = 0;
                 hasShot = true;
+                bulletCount++;
             } else if (shooterUI.bottomTouch) {
                 shoot(4, xVel, yVel);
                 canShoot = false;
                 timeAfterLastBullet = 0;
                 hasShot = true;
+                bulletCount++;
             }
         }
 

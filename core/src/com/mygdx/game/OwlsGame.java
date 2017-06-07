@@ -352,17 +352,6 @@ public class OwlsGame extends ApplicationAdapter {
 			world.step(Gdx.graphics.getDeltaTime(), 6, 2); //update world
 		}
 
-		//destroy all toBeRemoved bullets for other player
-		for (HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
-			for (int i = 0; i < entry.getValue().bulletList.size(); i++) {
-				if (!entry.getValue().bulletList.isEmpty() && entry.getValue().bulletList.get(i).toBeFreed) {
-					Bullet bullet = entry.getValue().bulletList.get(i);
-					removeBodySafely(bullet.bulletBody);
-					entry.getValue().bulletList.remove(i);
-				}
-			}
-		}
-
 		//clear the background and allow stuff to print on screen
 		Gdx.gl.glClearColor(1, 1, 1, 1);
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -385,7 +374,6 @@ public class OwlsGame extends ApplicationAdapter {
 
 		//update your player on opponent's screen
 		updatePositionOnOppScreen(Gdx.graphics.getDeltaTime());
-
 
 		//shoot bullets in proper directions + add delay
 		if(player1.isAlive) {
@@ -429,6 +417,17 @@ public class OwlsGame extends ApplicationAdapter {
 
 				entry.getValue().getPlayerSprite().draw(batch); //draw player sprite
 				entry.getValue().updatePlayerPos(); //update position
+			}
+		}
+
+		//destroy all toBeRemoved bullets for other player
+		for (HashMap.Entry<String, Player> entry : oppPlayers.entrySet()) {
+			for (int i = 0; i < entry.getValue().bulletList.size(); i++) {
+				if (!entry.getValue().bulletList.isEmpty() && entry.getValue().bulletList.get(i).toBeFreed) {
+					Bullet bullet = entry.getValue().bulletList.get(i);
+					removeBodySafely(bullet.bulletBody);
+					entry.getValue().bulletList.remove(i);
+				}
 			}
 		}
 
